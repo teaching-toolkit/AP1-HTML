@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pfeil-Experiment</title>
+<link rel="stylesheet" href="../../shared/base.css">
+<style>
+[hidden] { display: none !important; }
+.screen h1, .screen h2 { outline: none; }
+.lead { color: var(--muted); }
+.nav { margin-top: 16px; }
+.privacy { font-size: .9rem; color: var(--muted); margin-top: 14px; }
+.status { min-height: 1.4em; font-size: .92rem; color: var(--muted); }
+@media (max-width: 420px) { .page { padding: 8px; } .card { padding: 12px; } }
+
+/* Laden */
+.loadbox { margin: 16px 0 4px; }
+.loadbox .progress { margin-top: 6px; }
+
+/* Teil 1: Pfeil-Aufgabe */
+.timebar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.timebar .progress { flex: 1; }
+.timebar .t { font-variant-numeric: tabular-nums; min-width: 5.5em; text-align: right; color: var(--muted); font-size: .92rem; }
+.explay { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; grid-template-areas: "stage stage" "left right"; align-items: stretch; }
+.stage { grid-area: stage; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.ans { min-height: 88px; font-size: 1.6rem; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 12px; user-select: none; -webkit-user-select: none; }
+.ans.left { grid-area: left; }
+.ans.right { grid-area: right; }
+.ans { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.ans:active { background: var(--accent-soft); border-color: var(--accent); }
+.ans svg { width: 38px; height: 38px; flex: none; }
+.ans .lbl { font-size: .95rem; font-weight: 600; }
+#arrow { width: min(34vw, 140px); height: auto; color: var(--fg); display: block; }
+#arrow[data-dir="left"] { transform: scaleX(-1); }
+.facewrap { width: min(72vw, 44vh, 300px); aspect-ratio: 1 / 1; }
+.face { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; background: var(--border); }
+.face.mirror { transform: scaleX(-1); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .explay { grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr); grid-template-areas: "left stage right"; align-items: center; }
+  .ans { min-height: 140px; flex-direction: column; }
+  #arrow { width: min(18vh, 100px); }
+  .facewrap { width: min(48vh, 240px); }
+  .card { padding: 10px; }
+}
+
+/* Teil 2: Bewertung */
+.ratebox { text-align: center; }
+.ratebox .facewrap { margin: 0 auto 12px; width: min(78vw, 300px); }
+.rates { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 1px 1px 0; margin-top: 8px; }
+.rates button { appearance: none; font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; min-height: 56px; margin: 0 -1px -1px 0; border: 1px solid var(--border); background: var(--card); color: var(--fg); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.rates button:hover { border-color: var(--accent); position: relative; z-index: 1; }
+.rates button:active { background: var(--accent); color: var(--accent-fg); }
+.rates button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; position: relative; z-index: 2; }
+.anchors { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; color: var(--muted); margin-top: 6px; }
+.anchors span { flex: 1 1 0; }
+.anchors span:nth-child(2) { text-align: center; }
+.anchors span:last-child { text-align: right; }
+.anchors span:first-child { text-align: left; }
+.rateprog { font-size: .92rem; color: var(--muted); margin-bottom: 6px; }
+
+/* Aufloesung */
+.thumbs { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.thumbs figure { margin: 0; text-align: center; font-size: .85rem; color: var(--muted); }
+.thumbs img { display: block; width: 84px; height: 84px; object-fit: cover; border-radius: 10px; background: var(--border); }
+.means { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 10px 0; }
+.mean { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card); }
+.mean .k { font-size: .85rem; color: var(--muted); }
+.mean .v { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .means { grid-template-columns: 1fr; } .mean { display: flex; justify-content: space-between; align-items: baseline; } }
+.tblwrap { margin: 8px 0 4px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tbl th, .tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.tbl thead th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl tr.me th, .tbl tr.me td { background: var(--accent-soft); }
+.tbl img.mini { display: block; width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+@media (max-width: 600px) {
+  .tbl.stack thead { display: none; }
+  .tbl.stack, .tbl.stack tbody { display: block; }
+  .tbl.stack tr { display: block; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; padding: 6px 10px; }
+  .tbl.stack th, .tbl.stack td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 2px 0; text-align: right; background: none !important; }
+  .tbl.stack th[scope="row"] { font-size: 1rem; text-align: left; border-bottom: 1px solid var(--border); margin-bottom: 4px; padding-bottom: 4px; }
+  .tbl.stack td::before { content: attr(data-label); color: var(--muted); text-align: left; }
+  .tbl.stack td:empty { display: none; }
+}
+.codebox { margin: 8px 0; min-height: 44px; display: flex; align-items: center; }
+textarea.codes { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; min-height: 140px; }
+.msg-list { margin: 6px 0 0; padding-left: 20px; }
+.plot { width: 100%; }
+.plot svg { display: block; width: 100%; height: auto; }
+.plot text { fill: var(--muted); font: 12px var(--font); }
+.plot .axis-title { fill: var(--fg); font-weight: 600; }
+.plot .grid { stroke: var(--border); stroke-width: 1; }
+.plot .zero { stroke: var(--fg); stroke-width: 1.5; }
+.plot .meanline { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; }
+.plot .bar-pos { fill: var(--accent); }
+.plot .bar-neg { fill: var(--warn); }
+.plot .frame { stroke: var(--muted); fill: none; }
+.stat { margin: 8px 0 0; font-weight: 600; }
+</style>
+</head>
+<body>
+<main class="page" id="app">
+<noscript><div class="card notice warn">Diese Seite braucht JavaScript.</div></noscript>
+
+<!-- Anleitung -->
+<section class="screen" id="screen-instructions" data-screen="instructions">
+  <div class="card">
+    <h1 tabindex="-1">Pfeil-Experiment</h1>
+    <p class="lead">In diesem kurzen Experiment siehst du nacheinander Gesichter mit einem Pfeil darüber. Deine Aufgabe:</p>
+    <ul>
+      <li>Gib an, in welche Richtung der <strong>Pfeil</strong> zeigt: links oder rechts.</li>
+      <li>Am Handy oder Tablet tippst du auf den linken oder rechten Knopf. Am Computer kannst du die Pfeiltasten <strong>←</strong> und <strong>→</strong> drücken.</li>
+      <li>Antworte so schnell und so genau wie möglich.</li>
+    </ul>
+    <p>Das Experiment dauert <strong id="dur-text">etwa 2 Minuten</strong>. Danach folgt ein kurzer zweiter Teil.</p>
+    <div class="loadbox" aria-live="polite">
+      <div id="load-text" class="hint">Bilder werden geladen …</div>
+      <div class="progress" aria-hidden="true"><span id="load-bar" style="width:0%"></span></div>
+    </div>
+    <div class="row nav">
+      <button type="button" class="btn primary" id="btn-start" disabled>Experiment starten</button>
+      <button type="button" class="btn ghost" id="btn-reload" hidden>Bilder neu laden</button>
+      <button type="button" class="btn ghost" id="btn-group-intro">Gruppe auswerten</button>
+    </div>
+    <p class="privacy">Deine Eingaben bleiben in deinem Browser. Es werden keine Daten gesendet.</p>
+  </div>
+</section>
+
+<!-- Teil 1 -->
+<section class="screen" id="screen-exposure" data-screen="exposure" hidden>
+  <div class="card">
+    <div class="timebar">
+      <h2 tabindex="-1" style="margin:0;font-size:1.1rem">Teil 1</h2>
+      <div class="progress" aria-hidden="true"><span id="time-bar" style="width:0%"></span></div>
+      <div class="t" id="time-text" aria-hidden="true"></div>
+    </div>
+    <p class="hint" style="margin:0 0 10px">In welche Richtung zeigt der Pfeil?</p>
+    <div class="explay">
+      <div class="stage">
+        <svg id="arrow" data-dir="right" viewBox="0 0 120 56" role="img" aria-label="Pfeil nach rechts">
+          <path d="M6 28 H92 M70 8 L108 28 L70 48" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="facewrap"><img id="face" class="face" src="" alt="Gesicht" width="325" height="325"></div>
+      </div>
+      <button type="button" class="btn ans left" id="btn-left" aria-label="Pfeil zeigt nach links">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M34 20 H8 M18 9 L7 20 L18 31" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="lbl">links</span>
+      </button>
+      <button type="button" class="btn ans right" id="btn-right" aria-label="Pfeil zeigt nach rechts">
+        <span class="lbl">rechts</span>
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6 20 H32 M22 9 L33 20 L22 31" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Uebergang -->
+<section class="screen" id="screen-part2" data-screen="part2" hidden>
+  <div class="card">
+    <h2 tabindex="-1">Teil 2 – Sympathiebewertung</h2>
+    <p>Teil 1 ist beendet. Du siehst nun einige Gesichter nacheinander. Bitte gib an, wie sympathisch du jede Person findest.</p>
+    <p>Es gibt keine richtigen oder falschen Antworten. Tippe auf eine Zahl von 1 bis 7 (am Computer geht auch die Zifferntaste).</p>
+    <div class="row nav">
+      <button type="button" class="btn primary" id="btn-part2">Weiter</button>
+    </div>
+  </div>
+</section>
+
+<!-- Teil 2 -->
+<section class="screen" id="screen-rating" data-screen="rating" hidden>
+  <div class="card ratebox">
+    <h2 tabindex="-1" style="font-size:1.1rem">Teil 2 – Sympathiebewertung</h2>
+    <div class="rateprog" id="rate-progress"></div>
+    <div class="progress" aria-hidden="true" style="margin-bottom:14px"><span id="rate-bar" style="width:0%"></span></div>
+    <div class="facewrap"><img id="rating-face" class="face" src="" alt="Gesicht zur Bewertung" width="325" height="325"></div>
+    <p style="font-weight:600;margin:6px 0">Wie sympathisch findest du diese Person insgesamt?</p>
+    <div class="rates" id="rates" role="group" aria-label="Sympathie von 1 bis 7"></div>
+    <div class="anchors"><span>1 = überhaupt nicht sympathisch</span><span>4 = weder sympathisch noch unsympathisch</span><span>7 = sehr sympathisch</span></div>
+    <div class="row between nav">
+      <button type="button" class="btn ghost" id="btn-prev" hidden>&larr; Vorheriges Gesicht</button>
+    </div>
+  </div>
+</section>
+
+<!-- Aufloesung -->
+<section class="screen" id="screen-results" data-screen="results" hidden>
+  <div class="card">
+    <h2 tabindex="-1">Auflösung</h2>
+    <p>In diesem Experiment ging es um den <strong>Mere-Exposure-Effekt</strong>.</p>
+    <p>Von insgesamt 49 Gesichtern wurden <strong>4 Gesichter deutlich häufiger</strong> gezeigt als die anderen (etwa zehnmal so oft wie jedes andere Gesicht). In deinem Durchlauf waren das die Bilder:</p>
+    <div class="thumbs" id="freq-thumbs"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Deine Bewertungen</h3>
+    <div class="means">
+      <div class="mean"><div class="k">Ø häufig gezeigte Gesichter</div><div class="v" id="mean-frequent" data-v="">–</div></div>
+      <div class="mean"><div class="k">Ø selten gezeigte Gesichter</div><div class="v" id="mean-rare" data-v="">–</div></div>
+      <div class="mean"><div class="k">Differenz (häufig − selten)</div><div class="v" id="mean-diff" data-v="">–</div></div>
+    </div>
+    <p id="difference-text"></p>
+    <p class="notice warn">Dein Ergebnis beruht auf 4 Bewertungen für häufig und 6 für selten gezeigte Gesichter. Mit so wenigen Bewertungen ist der Unterschied verrauscht.</p>
+    <h3>Alle 10 Bewertungen</h3>
+    <div class="tblwrap"><table class="tbl stack" id="tbl-ratings"></table></div>
+    <h3>Pfeil-Aufgabe</h3>
+    <p id="arrow-stats"></p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Ergebnis-Code für die Gruppe</h3>
+    <p class="hint">Der Code enthält deine zehn Bewertungen und die Trefferzahl der Pfeil-Aufgabe, aber keinen Namen. Die Gruppe kann alle Codes unter «Gruppe auswerten» gemeinsam auswerten.</p>
+    <div class="code codebox" id="code-output" tabindex="0" aria-label="Ergebnis-Code"></div>
+    <div class="row">
+      <button type="button" class="btn primary" id="btn-copy">Code kopieren</button>
+      <span class="status" id="copy-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="row between nav">
+      <button type="button" class="btn" id="btn-group-results">Gruppe auswerten</button>
+      <button type="button" class="btn ghost" id="btn-restart">Nochmal starten</button>
+    </div>
+  </div>
+</section>
+
+<!-- Gruppe auswerten -->
+<section class="screen" id="screen-gruppe" data-screen="gruppe" hidden>
+  <div class="card">
+    <h2 tabindex="-1">Gruppe auswerten</h2>
+    <p class="lead">Füge die Ergebnis-Codes der Gruppe ein, einen Code pro Zeile. Leere Zeilen und doppelte Codes werden ignoriert.</p>
+    <label for="group-input">Ergebnis-Codes</label>
+    <textarea class="codes" id="group-input" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="HSLU-mere-v1.…"></textarea>
+    <div class="row nav" style="margin-top:12px">
+      <button type="button" class="btn primary" id="btn-group-run">Auswerten</button>
+      <button type="button" class="btn ghost" id="btn-group-clear">Leeren</button>
+      <button type="button" class="btn ghost" id="btn-group-back">&larr; Zurück</button>
+    </div>
+    <div id="group-msgs" role="status" aria-live="polite"></div>
+  </div>
+  <div id="group-result" hidden>
+    <div class="card">
+      <h3 style="margin-top:0">Gruppe</h3>
+      <div class="means" id="group-means"></div>
+      <p id="group-counts" class="stat"></p>
+      <p class="hint">Jede Person liefert 4 und 6 Bewertungen. Einzelne Differenzen sind verrauscht.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Differenz (häufig − selten) je Person</h3>
+      <div class="plot" id="gplot-diff"></div>
+      <p class="hint">Gestrichelte Linie: Mittel der Differenzen. Skala: −6 bis +6 Punkte.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Pro Person</h3>
+      <div class="tblwrap"><table class="tbl stack" id="tbl-group-persons"></table></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+(function () {
+'use strict';
+
+/* ================= Konfiguration ================= */
+var TOTAL_IMAGES = 49;          // Bilder assets/1.webp ... 49.webp
+var N_FREQUENT = 4;             // haeufige Gesichter pro Durchlauf (zufaellig gewaehlt)
+var N_RARE_RATED = 6;           // seltene Gesichter in der Bewertung
+var FREQUENT_WEIGHT = 10;       // haeufige Gesichter kommen 10 mal so oft vor wie ein seltenes
+var DEFAULT_DURATION_S = 120;   // wie im Original
+// false = wie im Original: die 6 seltenen Gesichter der Bewertung werden aus allen 45 seltenen gezogen,
+// auch wenn sie in Teil 1 evtl. nie gezeigt wurden. true = nur aus bereits gezeigten (falls mindestens 6).
+var ONLY_SEEN_RARE = false;
+var IMAGE_DIR = 'assets/';
+var CODE_ID = 'HSLU-mere-v1';
+
+/* ================= URL-Parameter (Tests) ================= */
+function param(name) {
+  try { return new URLSearchParams(location.search).get(name); } catch (e) { return null; }
+}
+var seedParam = param('seed');
+var durParam = parseInt(param('dauer'), 10);
+var DURATION_S = (isFinite(durParam) && durParam >= 1 && durParam <= 600) ? durParam : DEFAULT_DURATION_S;
+
+/* ================= Zufall ================= */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function cryptoRng() {
+  var buf = new Uint32Array(1);
+  return function () {
+    try { window.crypto.getRandomValues(buf); return buf[0] / 4294967296; } catch (e) { return Math.random(); }
+  };
+}
+var rng = (seedParam !== null && seedParam !== '' && isFinite(parseInt(seedParam, 10))) ? mulberry32(parseInt(seedParam, 10)) : cryptoRng();
+function randInt(n) { return Math.floor(rng() * n); }
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = randInt(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+
+/* ================= Hilfsfunktionen ================= */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
+function imgUrl(id) { return IMAGE_DIR + id + '.webp'; }
+function mean(a) { return a.reduce(function (x, y) { return x + y; }, 0) / a.length; }
+function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+function signed(x, d) { var t = Math.abs(x).toFixed(d); return (x < 0 && Number(t) !== 0 ? '−' : (x > 0 && Number(t) !== 0 ? '+' : '')) + t; }
+function th(txt, num) { return '<th scope="col"' + (num ? ' class="num"' : '') + '>' + esc(txt) + '</th>'; }
+function range(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+
+/* ================= Durchlauf-Zustand ================= */
+var ALL_IDS = range(TOTAL_IMAGES);
+var run = null;
+
+// Waehlt 4 haeufige Gesichter zufaellig aus allen 49 (reine Funktion, auch fuer Tests).
+function pickFrequent(random) {
+  var a = ALL_IDS.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a.slice(0, N_FREQUENT).sort(function (x, y) { return x - y; });
+}
+function newRun() {
+  var frequent = pickFrequent(rng);
+  var rare = ALL_IDS.filter(function (id) { return frequent.indexOf(id) < 0; });
+  var pool = [];
+  frequent.forEach(function (id) { for (var i = 0; i < FREQUENT_WEIGHT; i++) pool.push(id); });
+  rare.forEach(function (id) { pool.push(id); });
+  var shown = {};
+  ALL_IDS.forEach(function (id) { shown[id] = 0; });
+  run = {
+    frequent: frequent, rareAll: rare, pool: pool, shown: shown,
+    prev: null, cur: null, trials: 0, hits: 0, answering: false,
+    items: [], ratings: [], idx: 0, lastRateAt: 0
+  };
+}
+
+/* ================= Bilder vorladen ================= */
+var cache = [], loadedCount = 0, failedCount = 0;
+function preload() {
+  cache = []; loadedCount = 0; failedCount = 0;
+  $('btn-reload').hidden = true;
+  updateLoad();
+  ALL_IDS.forEach(function (id) {
+    var im = new Image();
+    im.onload = function () { loadedCount++; updateLoad(); };
+    im.onerror = function () { failedCount++; updateLoad(); };
+    im.src = imgUrl(id);
+    cache.push(im);
+  });
+}
+function updateLoad() {
+  var done = loadedCount + failedCount, pct = Math.round(done / TOTAL_IMAGES * 100);
+  $('load-bar').style.width = pct + '%';
+  var ready = loadedCount === TOTAL_IMAGES;
+  if (done < TOTAL_IMAGES) {
+    $('load-text').textContent = 'Bilder werden geladen: ' + done + ' von ' + TOTAL_IMAGES;
+  } else if (ready) {
+    $('load-text').textContent = 'Alle Bilder sind geladen. Du kannst starten.';
+  } else {
+    $('load-text').textContent = failedCount + ' Bilder konnten nicht geladen werden. Prüfe die Verbindung und lade die Bilder neu.';
+  }
+  $('btn-start').disabled = !ready;
+  $('btn-reload').hidden = !(done === TOTAL_IMAGES && !ready);
+}
+
+/* ================= Teil 1: Pfeil-Aufgabe ================= */
+var phase = 'instructions';
+var timeoutId = null, tickId = null, startedAt = 0;
+
+function nextFaceId() {
+  var id, guard = 0;
+  do { id = run.pool[randInt(run.pool.length)]; guard++; } while (id === run.prev && guard < 1000);
+  return id;
+}
+function presentTrial() {
+  var id = nextFaceId();
+  run.prev = id;
+  run.shown[id]++;
+  var mirrored = rng() < 0.5;
+  var dir = rng() < 0.5 ? 'left' : 'right';
+  run.cur = { id: id, mirrored: mirrored, dir: dir };
+  var face = $('face');
+  face.src = imgUrl(id);
+  face.alt = 'Gesicht Nr. ' + id;
+  face.classList.toggle('mirror', mirrored);
+  face.setAttribute('data-id', id);
+  var arrow = $('arrow');
+  arrow.setAttribute('data-dir', dir);
+  arrow.setAttribute('aria-label', 'Pfeil nach ' + (dir === 'left' ? 'links' : 'rechts'));
+}
+function answer(dir) {
+  if (phase !== 'exposure' || !run.cur) return;
+  run.trials++;
+  if (dir === run.cur.dir) run.hits++;
+  presentTrial();
+}
+function tick() {
+  var el = performance.now() - startedAt, total = DURATION_S * 1000;
+  var left = Math.max(0, total - el);
+  $('time-bar').style.width = Math.min(100, el / total * 100) + '%';
+  $('time-text').textContent = 'noch ' + Math.ceil(left / 1000) + ' s';
+}
+function startExposure() {
+  if (phase === 'exposure') return;
+  newRun();
+  phase = 'exposure';
+  showScreen('exposure');
+  startedAt = performance.now();
+  tick();
+  tickId = setInterval(tick, 250);
+  timeoutId = setTimeout(endExposure, DURATION_S * 1000);
+  presentTrial();
+}
+function endExposure() {
+  if (phase !== 'exposure') return;
+  clearTimeout(timeoutId); clearInterval(tickId);
+  phase = 'part2';
+  showScreen('part2');
+}
+
+/* ================= Bildschirme ================= */
+var SCREENS = ['instructions', 'exposure', 'part2', 'rating', 'results', 'gruppe'];
+var current = 'instructions', beforeGroup = 'instructions';
+function showScreen(name) {
+  SCREENS.forEach(function (s) { $('screen-' + s).hidden = s !== name; });
+  current = name;
+  window.scrollTo(0, 0);
+  var h = $('screen-' + name).querySelector('h1, h2');
+  if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+}
+
+/* ================= Teil 2: Bewertung ================= */
+function setupRating() {
+  var pool = run.rareAll;
+  if (ONLY_SEEN_RARE) {
+    var seen = pool.filter(function (id) { return run.shown[id] > 0; });
+    if (seen.length >= N_RARE_RATED) pool = seen;
+  }
+  var rare = shuffle(pool).slice(0, N_RARE_RATED);
+  var items = run.frequent.map(function (id) { return { id: id, type: 'frequent' }; })
+    .concat(rare.map(function (id) { return { id: id, type: 'rare' }; }));
+  run.items = shuffle(items);
+  run.values = [];
+  run.idx = 0;
+  var box = $('rates'), h = '';
+  for (var v = 1; v <= 7; v++) h += '<button type="button" data-v="' + v + '" aria-label="Sympathie ' + v + ' von 7">' + v + '</button>';
+  box.innerHTML = h;
+}
+function showRatingItem() {
+  var it = run.items[run.idx], n = run.items.length;
+  var face = $('rating-face');
+  face.src = imgUrl(it.id);
+  face.alt = 'Gesicht Nr. ' + it.id;
+  face.setAttribute('data-id', it.id);
+  $('rate-progress').textContent = 'Gesicht ' + (run.idx + 1) + ' von ' + n;
+  $('rate-bar').style.width = (run.idx / n * 100) + '%';
+  $('btn-prev').hidden = run.idx === 0;
+}
+function startRating() {
+  if (phase !== 'part2') return;
+  phase = 'rating';
+  setupRating();
+  showScreen('rating');
+  showRatingItem();
+  run.lastRateAt = performance.now();
+}
+function rate(v) {
+  if (phase !== 'rating') return;
+  var now = performance.now();
+  if (now - run.lastRateAt < 250) return;   // schuetzt vor Doppeltippen
+  run.lastRateAt = now;
+  run.values[run.idx] = v;
+  run.idx++;
+  if (run.idx >= run.items.length) { finishRating(); } else { showRatingItem(); }
+}
+function prevRating() {
+  if (phase !== 'rating' || run.idx === 0) return;
+  run.idx--;
+  run.lastRateAt = performance.now();
+  showRatingItem();
+}
+function finishRating() {
+  phase = 'results';
+  var f = [], r = [];
+  run.items.forEach(function (it, i) { (it.type === 'frequent' ? f : r).push(run.values[i]); });
+  run.person = { f: f, r: r, trials: run.trials, hits: run.hits };
+  showScreen('results');
+  renderResults();
+}
+
+/* ================= Ergebnis-Code =================
+   HSLU-mere-v1.<nonce:3>.<haeufig:4>.<selten:6>.<durchgaenge:3>.<treffer:3>.<pruefsumme:2>
+   Bewertungen als Ziffern 1..7 in Bewertungsreihenfolge; Durchgaenge und Treffer der Pfeil-Aufgabe in Base36
+   mit 3 Zeichen. Pruefsumme: h = (h*31 + zeichencode) mod 1296 ueber den Teil nach der Version.        */
+function checksum(s) {
+  var h = 7;
+  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1296;
+  var t = h.toString(36);
+  return t.length < 2 ? '0' + t : t;
+}
+function pad(t, n) { t = String(t); while (t.length < n) t = '0' + t; return t; }
+function randomNonce() {
+  var o = '';
+  for (var i = 0; i < 3; i++) o += randInt(36).toString(36);
+  return o;
+}
+function encodePerson(p, nonce) {
+  var body = (nonce || randomNonce()) + '.' + p.f.join('') + '.' + p.r.join('') + '.' +
+             pad(p.trials.toString(36), 3) + '.' + pad(p.hits.toString(36), 3);
+  return CODE_ID + '.' + body + '.' + checksum(body);
+}
+function decodeLine(raw) {
+  var line = String(raw).replace(/[\s​-‍﻿]/g, '');
+  if (!line) return { ok: false, reason: 'leer' };
+  var low = line.toLowerCase();
+  if (low.indexOf('hslu-') === 0 && low.indexOf('hslu-mere-') !== 0) {
+    return { ok: false, reason: 'gehört zu einer anderen Seite (Kennung ' + line.split('.')[0].slice(0, 24) + ')' };
+  }
+  if (low.indexOf('hslu-mere-') !== 0) return { ok: false, reason: 'kein Ergebnis-Code dieser Seite' };
+  if (low.indexOf(CODE_ID.toLowerCase() + '.') !== 0) return { ok: false, reason: 'andere Version des Codes' };
+  var rest = low.slice(CODE_ID.length + 1), parts = rest.split('.');
+  if (parts.length !== 6) return { ok: false, reason: 'Format stimmt nicht' };
+  if (!/^[0-9a-z]{3}$/.test(parts[0]) || !/^[0-9a-z]{4}$/.test(parts[1]) || !/^[0-9a-z]{6}$/.test(parts[2]) ||
+      !/^[0-9a-z]{3}$/.test(parts[3]) || !/^[0-9a-z]{3}$/.test(parts[4]) || !/^[0-9a-z]{2}$/.test(parts[5])) {
+    return { ok: false, reason: 'Format stimmt nicht (Zeichen oder Länge)' };
+  }
+  if (checksum(parts.slice(0, 5).join('.')) !== parts[5]) return { ok: false, reason: 'Prüfsumme stimmt nicht (Tippfehler oder abgeschnitten?)' };
+  var f = [], r = [], i, v;
+  for (i = 0; i < 4; i++) { v = parseInt(parts[1].charAt(i), 10); if (!(v >= 1 && v <= 7)) return { ok: false, reason: 'Bewertung ausserhalb 1 bis 7' }; f.push(v); }
+  for (i = 0; i < 6; i++) { v = parseInt(parts[2].charAt(i), 10); if (!(v >= 1 && v <= 7)) return { ok: false, reason: 'Bewertung ausserhalb 1 bis 7' }; r.push(v); }
+  var trials = parseInt(parts[3], 36), hits = parseInt(parts[4], 36);
+  if (isNaN(trials) || isNaN(hits) || hits > trials) return { ok: false, reason: 'Trefferzahl ungültig' };
+  return { ok: true, key: CODE_ID.toLowerCase() + '.' + rest, person: { f: f, r: r, trials: trials, hits: hits } };
+}
+// Kennzahlen einer Person. Gleichheit exakt ueber ganze Zahlen (sumF/4 = sumR/6  <=>  6*sumF = 4*sumR).
+function stats(p) {
+  var sF = sum(p.f), sR = sum(p.r);
+  return { meanF: sF / 4, meanR: sR / 6, diff: sF / 4 - sR / 6, sign: Math.sign(6 * sF - 4 * sR),
+           rate: p.trials > 0 ? p.hits / p.trials : null };
+}
+
+/* ================= Aufloesung (eine Person) ================= */
+function renderResults() {
+  var p = run.person, st = stats(p);
+  $('freq-thumbs').innerHTML = run.frequent.map(function (id) {
+    return '<figure><img src="' + imgUrl(id) + '" alt="Gesicht Nr. ' + id + '" width="84" height="84"><figcaption>Nr. ' + id + '</figcaption></figure>';
+  }).join('');
+  function setMean(id, v, txt) { var el = $(id); el.textContent = txt; el.setAttribute('data-v', String(v)); }
+  setMean('mean-frequent', st.meanF, st.meanF.toFixed(2));
+  setMean('mean-rare', st.meanR, st.meanR.toFixed(2));
+  setMean('mean-diff', st.diff, st.sign === 0 ? '0.00' : signed(st.diff, 2));
+  $('difference-text').textContent = st.sign > 0
+    ? 'Du hast die häufig gezeigten Gesichter im Mittel höher bewertet als die selten gezeigten.'
+    : (st.sign < 0 ? 'Du hast die selten gezeigten Gesichter im Mittel höher bewertet als die häufig gezeigten.'
+      : 'Die Mittelwerte für häufig und selten gezeigte Gesichter sind gleich.');
+
+  var rows = [];
+  run.items.forEach(function (it, i) { rows.push({ id: it.id, type: it.type, v: run.values[i] }); });
+  rows.sort(function (a, b) { return (a.type === b.type ? 0 : (a.type === 'frequent' ? -1 : 1)) || a.id - b.id; });
+  $('tbl-ratings').innerHTML = '<thead><tr>' + th('Bild') + th('Gezeigt') + th('Bewertung (1–7)', 1) + th('Anzahl Darbietungen', 1) + '</tr></thead><tbody>' +
+    rows.map(function (r) {
+      return '<tr data-id="' + r.id + '" data-type="' + r.type + '"><th scope="row"><img class="mini" src="' + imgUrl(r.id) + '" alt="" width="44" height="44"> Nr. ' + r.id + '</th>' +
+        '<td data-label="Gezeigt">' + (r.type === 'frequent' ? 'häufig' : 'selten') + '</td>' +
+        '<td class="num" data-label="Bewertung (1–7)">' + r.v + '</td>' +
+        '<td class="num" data-label="Anzahl Darbietungen">' + run.shown[r.id] + '</td></tr>';
+    }).join('') + '</tbody>';
+  $('arrow-stats').innerHTML = p.trials > 0
+    ? '<span id="arrow-hits">' + p.hits + '</span> von <span id="arrow-trials">' + p.trials + '</span> Antworten richtig (' + Math.round(st.rate * 100) + ' %).'
+    : 'Du hast keine Antworten gegeben.';
+  $('code-output').textContent = encodePerson(p);
+  $('copy-status').textContent = '';
+}
+
+/* ================= Gruppe auswerten ================= */
+var lastGroup = null;
+function parseGroup(text) {
+  var lines = String(text).split(/\r?\n/), seen = {}, persons = [], invalid = [], dups = [];
+  lines.forEach(function (raw, idx) {
+    if (!raw.replace(/[\s​-‍﻿]/g, '')) return;
+    var res = decodeLine(raw);
+    if (!res.ok) { invalid.push({ line: idx + 1, text: raw.trim(), reason: res.reason }); return; }
+    if (seen[res.key] !== undefined) { dups.push({ line: idx + 1, of: seen[res.key] }); return; }
+    seen[res.key] = idx + 1;
+    persons.push({ line: idx + 1, person: res.person, st: stats(res.person) });
+  });
+  return { persons: persons, invalid: invalid, dups: dups };
+}
+function drawDiffChart(host, diffs, meanDiff) {
+  var W = Math.max(260, Math.floor(host.clientWidth || 300));
+  var rowH = 30, mL = 70, mR = 40, mT = 10, mB = 36;
+  var H = mT + mB + rowH * diffs.length;
+  var pw = W - mL - mR;
+  var sx = function (v) { return mL + (v + 6) / 12 * pw; };
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H +
+          '" role="img" aria-label="Balkendiagramm der Differenz (häufig minus selten) je Person. Die Werte stehen auch in der Tabelle.">';
+  [-6, -4, -2, 0, 2, 4, 6].forEach(function (v) {
+    s += '<line class="' + (v === 0 ? 'zero' : 'grid') + '" x1="' + sx(v) + '" x2="' + sx(v) + '" y1="' + mT + '" y2="' + (H - mB) + '"/>' +
+         '<text x="' + sx(v) + '" y="' + (H - mB + 16) + '" text-anchor="middle">' + (v > 0 ? '+' + v : (v < 0 ? '−' + Math.abs(v) : '0')) + '</text>';
+  });
+  diffs.forEach(function (d, i) {
+    var y = mT + i * rowH + 5, x0 = sx(0), x1 = sx(d), x = Math.min(x0, x1), w = Math.max(Math.abs(x1 - x0), 1);
+    s += '<text x="' + (mL - 8) + '" y="' + (y + 14) + '" text-anchor="end">Person ' + (i + 1) + '</text>' +
+         '<rect class="' + (d >= 0 ? 'bar-pos' : 'bar-neg') + '" x="' + x + '" y="' + y + '" width="' + w + '" height="20" rx="3"><title>Person ' + (i + 1) + ': ' + (d > 0 ? '+' : '') + d.toFixed(2) + '</title></rect>';
+  });
+  s += '<line class="meanline" x1="' + sx(meanDiff) + '" x2="' + sx(meanDiff) + '" y1="' + (mT - 4) + '" y2="' + (H - mB) + '"/>';
+  s += '<text class="axis-title" x="' + (mL + pw / 2) + '" y="' + (H - 2) + '" text-anchor="middle">Differenz (häufig − selten), Punkte</text>';
+  host.innerHTML = s + '</svg>';
+}
+function renderGroupChart() {
+  if (!lastGroup || !lastGroup.persons.length) return;
+  var ds = lastGroup.persons.map(function (q) { return q.st.diff; });
+  drawDiffChart($('gplot-diff'), ds, mean(ds));
+}
+function renderGroup(g) {
+  var ps = g.persons, msgs = '';
+  msgs += '<p><strong>' + ps.length + ' ' + (ps.length === 1 ? 'Person' : 'Personen') + '</strong> eingelesen.</p>';
+  if (g.invalid.length) {
+    msgs += '<div class="notice warn" style="margin-top:8px"><strong>' + g.invalid.length + ' ungültige ' + (g.invalid.length === 1 ? 'Zeile' : 'Zeilen') + ' (nicht ausgewertet):</strong><ul class="msg-list">' +
+      g.invalid.map(function (x) {
+        var t = x.text.length > 30 ? x.text.slice(0, 30) + '…' : x.text;
+        return '<li>Zeile ' + x.line + ': ' + esc(x.reason) + ' (' + esc(t) + ')</li>';
+      }).join('') + '</ul></div>';
+  }
+  if (g.dups.length) {
+    msgs += '<div class="notice" style="margin-top:8px"><strong>' + g.dups.length + ' ' + (g.dups.length === 1 ? 'Duplikat' : 'Duplikate') + ' ignoriert:</strong><ul class="msg-list">' +
+      g.dups.map(function (x) { return '<li>Zeile ' + x.line + ' ist gleich wie Zeile ' + x.of + '.</li>'; }).join('') + '</ul></div>';
+  }
+  if (!ps.length) msgs += '<p class="muted">Keine gültigen Codes. Füge pro Zeile einen Code ein, der mit «' + CODE_ID + '» beginnt.</p>';
+  $('group-msgs').innerHTML = msgs;
+  lastGroup = g;
+  $('group-result').hidden = !ps.length;
+  if (!ps.length) return;
+
+  var mF = mean(ps.map(function (q) { return q.st.meanF; })), mR = mean(ps.map(function (q) { return q.st.meanR; })),
+      mD = mean(ps.map(function (q) { return q.st.diff; }));
+  var pos = ps.filter(function (q) { return q.st.sign > 0; }).length,
+      neg = ps.filter(function (q) { return q.st.sign < 0; }).length,
+      zero = ps.length - pos - neg;
+  $('group-means').innerHTML =
+    '<div class="mean"><div class="k">Ø häufig (Gruppe)</div><div class="v" id="g-mean-f" data-v="' + mF + '">' + mF.toFixed(2) + '</div></div>' +
+    '<div class="mean"><div class="k">Ø selten (Gruppe)</div><div class="v" id="g-mean-r" data-v="' + mR + '">' + mR.toFixed(2) + '</div></div>' +
+    '<div class="mean"><div class="k">Ø Differenz (häufig − selten)</div><div class="v" id="g-mean-d" data-v="' + mD + '">' + (Math.abs(mD) < 0.005 ? '0.00' : signed(mD, 2)) + '</div></div>';
+  $('group-counts').innerHTML = 'Personen mit positiver Differenz: <span id="g-pos">' + pos + '</span> von ' + ps.length +
+    ' (negativ: <span id="g-neg">' + neg + '</span>, gleich: <span id="g-zero">' + zero + '</span>)';
+
+  var rows = ps.map(function (q, i) {
+    return '<tr data-person="' + (i + 1) + '"><th scope="row">Person ' + (i + 1) + '</th>' +
+      '<td class="num" data-label="Ø häufig">' + q.st.meanF.toFixed(2) + '</td>' +
+      '<td class="num" data-label="Ø selten">' + q.st.meanR.toFixed(2) + '</td>' +
+      '<td class="num" data-label="Differenz" data-v="' + q.st.diff + '">' + (q.st.sign === 0 ? '0.00' : signed(q.st.diff, 2)) + '</td>' +
+      '<td class="num" data-label="Pfeil-Aufgabe">' + (q.person.trials > 0 ? q.person.hits + ' von ' + q.person.trials + ' (' + Math.round(q.st.rate * 100) + ' %)' : '–') + '</td></tr>';
+  }).join('');
+  rows += '<tr class="me" data-row="group"><th scope="row">Gruppenmittel</th><td class="num" data-label="Ø häufig">' + mF.toFixed(2) + '</td>' +
+    '<td class="num" data-label="Ø selten">' + mR.toFixed(2) + '</td><td class="num" data-label="Differenz">' + (Math.abs(mD) < 0.005 ? '0.00' : signed(mD, 2)) + '</td><td class="num" data-label="Pfeil-Aufgabe"></td></tr>';
+  $('tbl-group-persons').innerHTML = '<thead><tr>' + th('Person') + th('Ø häufig', 1) + th('Ø selten', 1) + th('Differenz', 1) + th('Pfeil-Aufgabe', 1) + '</tr></thead><tbody>' + rows + '</tbody>';
+  renderGroupChart();
+}
+
+/* ================= Ereignisse ================= */
+function copyCode() {
+  var txt = $('code-output').textContent, st = $('copy-status');
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    st.textContent = ok ? 'Code kopiert.' : 'Kopieren nicht möglich. Tippe auf den Code, markiere ihn und kopiere ihn von Hand.';
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function () { st.textContent = 'Code kopiert.'; }, fallback);
+  } else { fallback(); }
+}
+function openGroup() { beforeGroup = current; showScreen('gruppe'); }
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button') : null;
+  if (!b) return;
+  if (b.parentNode && b.parentNode.id === 'rates' && b.hasAttribute('data-v')) { rate(Number(b.getAttribute('data-v'))); return; }
+  switch (b.id) {
+    case 'btn-start': if (!b.disabled && phase === 'instructions') startExposure(); break;
+    case 'btn-reload': preload(); break;
+    case 'btn-left': answer('left'); break;
+    case 'btn-right': answer('right'); break;
+    case 'btn-part2': startRating(); break;
+    case 'btn-prev': prevRating(); break;
+    case 'btn-group-intro': case 'btn-group-results': openGroup(); break;
+    case 'btn-group-back': showScreen(beforeGroup === 'gruppe' ? 'instructions' : beforeGroup); break;
+    case 'btn-copy': copyCode(); break;
+    case 'btn-restart':
+      phase = 'instructions'; newRun(); run.person = null;
+      $('time-bar').style.width = '0%';
+      showScreen('instructions'); updateLoad(); break;
+    case 'btn-group-run': renderGroup(parseGroup($('group-input').value)); break;
+    case 'btn-group-clear':
+      $('group-input').value = ''; $('group-msgs').innerHTML = ''; $('group-result').hidden = true; lastGroup = null;
+      $('group-input').focus(); break;
+  }
+});
+window.addEventListener('keydown', function (e) {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (phase === 'exposure' && current === 'exposure') {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (!e.repeat) answer(e.key === 'ArrowLeft' ? 'left' : 'right');
+    }
+  } else if (phase === 'rating' && current === 'rating') {
+    if (/^[1-7]$/.test(e.key)) { e.preventDefault(); if (!e.repeat) rate(Number(e.key)); }
+  }
+});
+window.addEventListener('hashchange', function () {
+  if (location.hash === '#gruppe' && current !== 'gruppe' && phase !== 'exposure' && phase !== 'rating') { beforeGroup = current; showScreen('gruppe'); }
+});
+var resizeTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () { if (current === 'gruppe') renderGroupChart(); }, 150);
+});
+
+/* ================= Testhaken (siehe README) ================= */
+window.__mere = {
+  pickFrequent: pickFrequent, mulberry32: mulberry32,
+  getRun: function () { return run; },
+  config: { TOTAL_IMAGES: TOTAL_IMAGES, N_FREQUENT: N_FREQUENT, N_RARE_RATED: N_RARE_RATED, FREQUENT_WEIGHT: FREQUENT_WEIGHT, DURATION_S: DURATION_S }
+};
+
+/* ================= Start ================= */
+$('dur-text').textContent = DURATION_S === DEFAULT_DURATION_S ? 'etwa 2 Minuten' : DURATION_S + ' Sekunden (Testdauer)';
+newRun();
+preload();
+if ((location.hash || '') === '#gruppe') { beforeGroup = 'instructions'; showScreen('gruppe'); } else { showScreen('instructions'); }
+})();
+
+</script>
+</body>
+</html>

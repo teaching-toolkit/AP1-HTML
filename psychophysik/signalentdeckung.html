@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signalentdeckung: Ja/Nein-Aufgabe</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+[hidden] { display: none !important; }
+.crumb { margin: 0 0 10px; font-size: .92rem; }
+.crumb a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
+.lead { margin: .25rem 0 1rem; }
+.stagewrap { display: flex; justify-content: center; margin: 10px 0; }
+canvas.stage {
+  width: min(100%, 320px); aspect-ratio: 1 / 1; height: auto; display: block;
+  image-rendering: pixelated; border: 1px solid var(--border); border-radius: 8px; background: #808080;
+}
+canvas.small { width: min(100%, 200px); }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answers .btn { min-height: 60px; font-size: 1.1rem; border-radius: var(--radius); }
+.answers .btn .key { display: block; font-size: .8rem; font-weight: 400; opacity: .85; }
+.runhead { gap: 8px 12px; }
+.fb { min-height: 1.7em; margin: .6rem 0 0; font-weight: 600; text-align: center; }
+.fb.good { color: var(--good); }
+.fb.bad { color: var(--bad); }
+.prompt { text-align: center; margin: .25rem 0 .6rem; min-height: 1.5em; }
+.matrix { width: 100%; border-collapse: collapse; font-size: .95rem; margin: 6px 0; table-layout: fixed; }
+.matrix th, .matrix td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; vertical-align: middle; }
+.matrix thead th { background: var(--accent-soft); font-weight: 600; }
+.matrix tbody th { text-align: left; font-weight: 600; background: var(--accent-soft); width: 28%; }
+.matrix td b { display: block; font-size: 1.15rem; }
+.matrix td span { font-size: .85rem; color: var(--muted); }
+.matrix.compact { font-size: .8rem; }
+.matrix.compact th, .matrix.compact td { padding: 3px 4px; }
+.matrix.compact td b { display: inline; font-size: .95rem; margin-left: 4px; }
+.matrix.compact td span { font-size: .78rem; }
+.slider-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.slider-row input { min-height: 44px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 12px 0; }
+.stat { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card); }
+.stat .v { font-size: 1.3rem; font-weight: 700; }
+.stat .l { font-size: .85rem; color: var(--muted); }
+.chartbox { width: 100%; overflow: hidden; display: flex; justify-content: center; }
+.chart text { fill: var(--muted); font: 12px var(--font); }
+.chart .axis { stroke: var(--muted); stroke-width: 1; }
+.chart .grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .diag { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; fill: none; }
+.chart .curve { stroke: var(--fg); stroke-width: 2; fill: none; }
+.chart .mL { fill: var(--accent); stroke: var(--card); stroke-width: 1.5; }
+.chart .mK { fill: var(--warn); stroke: var(--card); stroke-width: 1.5; }
+.chart .mean { stroke: var(--fg); stroke-width: 2.5; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .88rem; color: var(--muted); margin: .25rem 0 0; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: .92rem; }
+table.tbl th, table.tbl td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+table.tbl th { font-weight: 600; color: var(--muted); }
+table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 600px) { table.tbl { font-size: .85rem; } table.tbl th, table.tbl td { padding: 6px 4px; } }
+#res-table { table-layout: fixed; }
+#res-table th:first-child { width: 36%; }
+#res-table th.num { white-space: normal; text-align: right; }
+#res-table th .sub { display: block; font-weight: 400; }
+table.tbl tr.sum td, table.tbl tr.sum th { font-weight: 700; border-top: 2px solid var(--border); }
+.scroll { overflow-x: auto; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
+.msg-error { border-left: 4px solid var(--bad); background: var(--bad-soft); padding: 10px 14px; border-radius: 8px; margin: 0 0 12px; }
+ul.plain { margin: .25rem 0; padding-left: 1.2rem; }
+.formula { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88rem; margin: .25rem 0; }
+.probe-res { margin-top: 12px; }
+@media (max-height: 700px) {
+  canvas.stage { width: min(100%, 240px); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="crumb"><a href="index.html">&larr; Übersicht</a></p>
+  <h1>Signalentdeckung: Ja/Nein-Aufgabe</h1>
+  <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+
+  <!-- 1. Aufgabe und Schwierigkeit -->
+  <section id="view-setup" class="card" aria-labelledby="h-setup">
+    <h2 id="h-setup" tabindex="-1">Aufgabe</h2>
+    <p class="lead">Du siehst kurz ein Bild mit zufälligem Rauschen. Schau dabei auf das Kreuz in der Mitte. In der Hälfte der Durchgänge steckt ein schwacher, heller Fleck im Bild, in der anderen Hälfte nicht. Der Fleck kann an verschiedenen Stellen erscheinen, aber nie in der Mitte. Danach folgt eine Maske. Du antwortest «Ja, Signal» oder «Nein», per Knopf oder mit den Tasten J und N.</p>
+    <h3>Beispiele</h3>
+    <div class="row">
+      <button type="button" class="btn" id="btn-ex-sig">Beispiel mit deutlichem Signal</button>
+      <button type="button" class="btn" id="btn-ex-no">Beispiel ohne Signal</button>
+    </div>
+    <div class="stagewrap"><canvas id="cv-ex" class="stage" width="160" height="160" role="img" aria-label="Beispielbild"></canvas></div>
+    <h3>Schwierigkeit einstellen</h3>
+    <label for="diff">Schwierigkeit</label>
+    <div class="slider-row">
+      <span class="hint">leichter</span>
+      <input type="range" id="diff" min="1" max="100" step="1" value="40" aria-describedby="diff-hint">
+      <span class="hint">schwieriger</span>
+    </div>
+    <p id="diff-hint" class="hint">Stell die Schwierigkeit so ein, dass du im Probelauf etwa 65 bis 85 % richtig hast. Danach bleibt sie in beiden Blöcken gleich.</p>
+    <div class="row">
+      <button type="button" class="btn" id="btn-probe">Probelauf starten</button>
+    </div>
+    <div class="probe-res" id="probe-res" aria-live="polite" hidden></div>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn primary" id="btn-lock" disabled>Festlegen und weiter</button>
+      <a class="btn ghost" href="#gruppe" id="link-group" style="text-decoration:none;display:inline-flex;align-items:center">Gruppe auswerten</a>
+    </div>
+    <p class="hint" id="setup-hint">Es werden keine Daten gesendet oder gespeichert.</p>
+  </section>
+
+  <!-- 2. Matrix vor dem Block -->
+  <section id="view-pre" class="card" aria-labelledby="h-pre" hidden>
+    <h2 id="h-pre" tabindex="-1">Block 1 von 2</h2>
+    <p id="pre-prev" class="muted" hidden></p>
+    <p>Für jede Antwort gibt es Punkte oder Abzug. Die Matrix bleibt während des Blocks sichtbar.</p>
+    <div id="pre-matrix"></div>
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn primary" id="btn-block-start">Block starten</button>
+    </div>
+  </section>
+
+  <!-- 3. Durchgänge (Probelauf und Blöcke) -->
+  <section id="view-run" class="card" aria-labelledby="h-run" hidden>
+    <div class="row between runhead">
+      <h2 id="h-run" tabindex="-1" style="margin:0">Probelauf</h2>
+      <span class="chip" id="run-count">Durchgang 1 von 20</span>
+      <span class="chip" id="run-score" hidden>Punkte: 0</span>
+    </div>
+    <div id="run-matrix" hidden></div>
+    <div class="stagewrap"><canvas id="cv" class="stage" width="160" height="160" role="img" aria-label="Reizfeld"></canvas></div>
+    <p class="prompt" id="run-prompt" role="status">&nbsp;</p>
+    <div class="answers">
+      <button type="button" class="btn" id="btn-yes" disabled>Ja, Signal<span class="key">Taste J</span></button>
+      <button type="button" class="btn" id="btn-no" disabled>Nein<span class="key">Taste N</span></button>
+    </div>
+    <p class="fb" id="run-fb" aria-live="polite">&nbsp;</p>
+    <div class="row end"><button type="button" class="btn ghost" id="btn-cancel">Abbrechen</button></div>
+  </section>
+
+  <!-- 4. Ergebnis -->
+  <section id="view-result" class="card" aria-labelledby="h-result" hidden>
+    <h2 id="h-result" tabindex="-1">Ergebnis</h2>
+    <div class="scroll"><table class="tbl" id="res-table"></table></div>
+    <p class="hint" id="res-prec"></p>
+    <details>
+      <summary>Berechnung</summary>
+      <p class="formula">Trefferrate H = Treffer / (Treffer + Verpasser)</p>
+      <p class="formula">Fehlalarmrate FA = Fehlalarme / (Fehlalarme + Korrekte Ablehnungen)</p>
+      <p class="formula">d′ = z(H) − z(FA)</p>
+      <p class="formula">c = −(z(H) + z(FA)) / 2</p>
+      <p class="hint">z ist die Umkehrfunktion der Standardnormalverteilung. Ist H oder FA gleich 0 oder 1, werden beide Raten log-linear korrigiert: H = (Treffer + 0.5) / (Signal-Durchgänge + 1), FA = (Fehlalarme + 0.5) / (Catch-Durchgänge + 1).</p>
+    </details>
+    <h3>ROC-Diagramm</h3>
+    <div class="chartbox" id="roc-wrap"></div>
+    <div class="legend" id="roc-legend" aria-hidden="true"></div>
+    <h3>Ergebnis-Code</h3>
+    <p class="hint">Enthält nur das Ergebnis, keine Namen. Gib den Code für die Gruppenauswertung weiter.</p>
+    <div class="code" id="res-code" tabindex="0"></div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn" id="btn-copy">Code kopieren</button>
+      <span id="copy-msg" class="hint" role="status"></span>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <a class="btn" id="link-group2" href="#gruppe" style="text-decoration:none;display:inline-flex;align-items:center">Gruppe auswerten</a>
+      <button type="button" class="btn ghost" id="btn-again">Noch einmal</button>
+    </div>
+  </section>
+
+  <!-- 5. Gruppe auswerten -->
+  <section id="view-group" class="card" aria-labelledby="h-group" hidden>
+    <h2 id="h-group" tabindex="-1">Gruppe auswerten</h2>
+    <label for="group-in">Ergebnis-Codes (ein Code pro Zeile)</label>
+    <textarea id="group-in" rows="6" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="HSLU-sdt-v2...."></textarea>
+    <p class="hint">Leerzeilen und doppelte Codes werden ignoriert. Ungültige Zeilen werden benannt.</p>
+    <div class="row">
+      <button type="button" class="btn primary" id="btn-group-run">Auswerten</button>
+      <button type="button" class="btn ghost" id="btn-group-back">Zurück</button>
+    </div>
+    <div id="group-out" aria-live="polite" style="margin-top:12px"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ======================================================================
+   Testhaken (siehe README): window.__test darf VOR dem Laden gesetzt werden,
+   z. B. {instant:true, observer:function(trial){return true;}, config:{...}}.
+   ====================================================================== */
+var T = window.__test = window.__test || {};
+
+/* ===== Konfiguration (Werte sind im README dokumentiert) ===== */
+var CONFIG = {
+  trialsPerBlock: 40,     // je Block, genau die Hälfte mit Signal (20 Signal, 20 Catch)
+  probeTrials: 16,        // Probelauf, genau die Hälfte mit Signal (8 / 8)
+  size: 160,              // Bildkantenlänge in Pixeln (wird per CSS vergrössert)
+  meanGray: 128,
+  sigma: 28,              // Standardabweichung der Pixelhelligkeit (Grauwerte)
+  blobW: 14,              // Breite (Sigma) des weichen Flecks in Pixeln
+  ampMin: 0.5,            // Fleck-Amplitude bei "schwierigster" Reglerstellung (Grauwerte)
+  ampMax: 16,             // Fleck-Amplitude bei "leichtester" Reglerstellung
+  exampleAmp: 40,         // Amplitude im Beispielbild (bewusst stärker als die leichteste Reglerstellung 16, damit der Fleck gut sichtbar ist)
+  defaultSlider: 40,      // Startstellung des Reglers (1 = leicht, 100 = schwierig); 40 statt 50 wegen unbekanntem Fleckort
+  // Ort des Flecks: nie in der Ausschlusszone um das Kreuz (Bildmitte), sondern auf einem schmalen Ring
+  exclR: 40,              // Ausschlusszone: Abstand Fleckmitte zur Kreuzmitte nie kleiner (Pixel)
+  bandMin: 44,            // Ring der erlaubten Fleckmitten: innerer Radius (Pixel), >= exclR + 4
+  bandMax: 52,            // äusserer Radius; durch edgeMin begrenzt (Bild 160 px: 80 - 28 = 52)
+  edgeMin: 28,            // Mindestabstand der Fleckmitte zum Bildrand (2 sigma)
+  // Fixationskreuz: klein, mit wenig Kontrast, heller als der Hintergrund (Nachbild dann dunkel)
+  crossArm: 5,            // Armlänge ab Kreuzmitte (Pixel)
+  crossWidth: 2,          // Strichstärke (Pixel, ganzzahlig)
+  crossGray: 184,         // Grauwert des Kreuzes (Hintergrund 128)
+  fixMs: 400, stimMs: 300, maskMs: 150, feedbackMs: 500, itiMs: 0,
+  maskBlock: 8,           // Kantenlänge der Maskenblöcke in Pixeln
+  targetLow: 65, targetHigh: 85,
+  payoff: {
+    liberal:      { hit: 1, cr: 1, miss: -4, fa: -1 },   // Verpasser teuer
+    konservativ:  { hit: 1, cr: 1, miss: -1, fa: -4 }    // Fehlalarm teuer
+  }
+};
+if (T.config) { for (var ck in T.config) { if (Object.prototype.hasOwnProperty.call(T.config, ck)) CONFIG[ck] = T.config[ck]; } }
+
+var BLOCK_LABEL = { liberal: 'Verpasser teuer', konservativ: 'Fehlalarm teuer' };
+var OUTCOME_WORD = { hit: 'Treffer', miss: 'Verpasser', fa: 'Fehlalarm', cr: 'Korrekte Ablehnung' };
+
+/* ===== Zufall ===== */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function makeGauss(rng) {
+  var spare = null;
+  return function () {
+    if (spare !== null) { var s = spare; spare = null; return s; }
+    var u = 0; while (u === 0) u = rng();
+    var v = rng();
+    var m = Math.sqrt(-2 * Math.log(u));
+    spare = m * Math.sin(2 * Math.PI * v);
+    return m * Math.cos(2 * Math.PI * v);
+  };
+}
+function readSeed() {
+  var m = /[?&]seed=(\d+)/.exec(location.search);
+  if (m) return (parseInt(m[1], 10) >>> 0);
+  if (typeof T.seed === 'number') return T.seed >>> 0;
+  return (Math.random() * 4294967296) >>> 0;
+}
+var SEED = readSeed();
+var rngMain = mulberry32(SEED);
+var gaussMain = makeGauss(rngMain);
+
+/* ======================================================================
+   Statistik: Normalverteilung und SDT
+   ====================================================================== */
+// Umkehrfunktion der Standardnormalverteilung (Wichura, Algorithmus AS 241, PPND16)
+function qnorm(p) {
+  if (!(p > 0 && p < 1)) {
+    if (p === 0) return -Infinity;
+    if (p === 1) return Infinity;
+    return NaN;
+  }
+  var q = p - 0.5, r, val;
+  if (Math.abs(q) <= 0.425) {
+    r = 0.180625 - q * q;
+    return q * (((((((r * 2509.0809287301226727 + 33430.575583588128105) * r + 67265.770927008700853) * r +
+      45921.953931549871457) * r + 13731.693765509461125) * r + 1971.5909503065514427) * r + 133.14166789178437745) * r +
+      3.387132872796366608) /
+      (((((((r * 5226.495278852545925 + 28729.085735721942674) * r + 39307.89580009271061) * r +
+      21213.794301586595867) * r + 5394.1960214247511077) * r + 687.1870074920579083) * r + 42.313330701600911252) * r + 1);
+  }
+  r = q < 0 ? p : 1 - p;
+  r = Math.sqrt(-Math.log(r));
+  if (r <= 5) {
+    r -= 1.6;
+    val = (((((((r * 7.7454501427834140764e-4 + 0.0227238449892691845833) * r + 0.24178072517745061177) * r +
+      1.27045825245236838258) * r + 3.64784832476320460504) * r + 5.7694972214606914055) * r + 4.6303378461565452959) * r +
+      1.42343711074968357734) /
+      (((((((r * 1.05075007164441684324e-9 + 5.475938084995344946e-4) * r + 0.0151986665636164571966) * r +
+      0.14810397642748007459) * r + 0.68976733498510000455) * r + 1.6763848301838038494) * r + 2.05319162663775882187) * r + 1);
+  } else {
+    r -= 5;
+    val = (((((((r * 2.01033439929228813265e-7 + 2.71155556874348757815e-5) * r + 0.0012426609473880784386) * r +
+      0.026532189526576123093) * r + 0.29656057182850489123) * r + 1.7848265399172913358) * r + 5.4637849111641143699) * r +
+      6.6579046435011037772) /
+      (((((((r * 2.04426310338993978564e-15 + 1.4215117583164458887e-7) * r + 1.8463183175100546818e-5) * r +
+      7.868691311456132591e-4) * r + 0.0148753612908506148525) * r + 0.13692988092273580531) * r + 0.59983220655588793769) * r + 1);
+  }
+  return q < 0 ? -val : val;
+}
+// Standardnormal-Verteilungsfunktion (nur für das Zeichnen der Kurven; Fehler < 1.2e-7)
+function erfc(x) {
+  var z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+  var r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 +
+    t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+  return x >= 0 ? r : 2 - r;
+}
+function pnorm(x) { return 0.5 * erfc(-x / Math.SQRT2); }
+
+// Zählwerte -> Raten, d' und c (Ja = "Signal vorhanden").
+function computeSDT(h, m, fa, cr) {
+  var nS = h + m, nN = fa + cr;
+  if (!(nS > 0) || !(nN > 0)) return null;
+  var H0 = h / nS, F0 = fa / nN, H = H0, F = F0, corrected = false;
+  if (H0 === 0 || H0 === 1 || F0 === 0 || F0 === 1) {
+    H = (h + 0.5) / (nS + 1);
+    F = (fa + 0.5) / (nN + 1);
+    corrected = true;
+  }
+  var zH = qnorm(H), zF = qnorm(F);
+  return { hits: h, misses: m, fas: fa, crs: cr, nSignal: nS, nNoise: nN, H0: H0, F0: F0, H: H, F: F,
+           zH: zH, zF: zF, dprime: zH - zF, c: -0.5 * (zH + zF), corrected: corrected };
+}
+
+/* ======================================================================
+   Reiz-Generator (rein; wird auch getestet)
+   ====================================================================== */
+function blobProfile(size, w, cx, cy) {
+  var p = new Float64Array(size * size);
+  if (cx == null) cx = (size - 1) / 2;
+  if (cy == null) cy = (size - 1) / 2;
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      var dx = x - cx, dy = y - cy;
+      p[y * size + x] = Math.exp(-(dx * dx + dy * dy) / (2 * w * w));
+    }
+  }
+  return p;
+}
+// Liefert RGBA-Bytes (Grau) eines Rauschbildes, optional mit weichem hellem Fleck an Position opt.pos {x, y}
+// (Pixelindex der Fleckmitte; ohne Angabe: Bildmitte, nur für Tests).
+function makeStimulus(gauss, signal, amp, opt) {
+  opt = opt || {};
+  var size = opt.size || CONFIG.size, sigma = opt.sigma != null ? opt.sigma : CONFIG.sigma;
+  var mean = opt.meanGray != null ? opt.meanGray : CONFIG.meanGray, w = opt.blobW || CONFIG.blobW;
+  var pos = opt.pos || null;
+  var prof = signal ? blobProfile(size, w, pos ? pos.x : null, pos ? pos.y : null) : null;
+  var out = new Uint8ClampedArray(size * size * 4);
+  for (var i = 0; i < size * size; i++) {
+    var v = mean + sigma * gauss() + (signal ? amp * prof[i] : 0);
+    out[4 * i] = v; out[4 * i + 1] = v; out[4 * i + 2] = v; out[4 * i + 3] = 255;
+  }
+  return out;
+}
+// Mitte des Bildes = Mitte des Kreuzes (Pixelindex)
+function centerOf(size) { return (size - 1) / 2; }
+// Fleckposition auf dem Ring [bandMin, bandMax] um die Kreuzmitte. theta: Winkel (Bogenmass), rng liefert den Radius
+// (gleichmässig nach Fläche im Ring). Rückgabe: Pixelindex der Fleckmitte.
+function positionAt(theta, rng) {
+  var a = CONFIG.bandMin, b = CONFIG.bandMax;
+  var r = Math.sqrt(a * a + rng() * (b * b - a * a)), c = centerOf(CONFIG.size);
+  return { x: c + r * Math.cos(theta), y: c + r * Math.sin(theta), r: r, theta: theta };
+}
+// k Positionen mit gleichmässiger Winkelverteilung: Kreis in k gleiche Sektoren, in jedem ein zufälliger Winkel,
+// zufällige Drehung des Rasters, zufällige Reihenfolge. Jede einzelne Position ist über den Ring gleichverteilt.
+function makePositions(k, rng) {
+  var out = [], i, off = rng() * 2 * Math.PI;
+  for (i = 0; i < k; i++) out.push(positionAt(off + (i + rng()) * 2 * Math.PI / k, rng));
+  for (i = k - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = out[i]; out[i] = out[j]; out[j] = t; }
+  return out;
+}
+// Ist die Position zulässig? (Ausschlusszone, Ring, Randabstand)
+function positionOk(p) {
+  var c = centerOf(CONFIG.size), r = Math.sqrt((p.x - c) * (p.x - c) + (p.y - c) * (p.y - c));
+  var edge = Math.min(p.x + 0.5, CONFIG.size - 0.5 - p.x, p.y + 0.5, CONFIG.size - 0.5 - p.y);
+  return r >= CONFIG.exclR && r >= CONFIG.bandMin - 1e-9 && r <= CONFIG.bandMax + 1e-9 && edge >= CONFIG.edgeMin - 1e-9;
+}
+function makeMask(rng, size, block) {
+  var out = new Uint8ClampedArray(size * size * 4), nb = Math.ceil(size / block), vals = [], i, x, y;
+  for (i = 0; i < nb * nb; i++) vals.push(Math.round(30 + rng() * 195));
+  for (y = 0; y < size; y++) {
+    for (x = 0; x < size; x++) {
+      var v = vals[Math.floor(y / block) * nb + Math.floor(x / block)], o = 4 * (y * size + x);
+      out[o] = v; out[o + 1] = v; out[o + 2] = v; out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+// Genau die Hälfte der Durchgänge mit Signal, zufällige Reihenfolge (Fisher-Yates).
+function makeSchedule(n, rng) {
+  var a = [], i;
+  for (i = 0; i < n; i++) a.push(i < Math.floor(n / 2));
+  for (i = n - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+// Ablaufplan eines Blocks: Reihenfolge Signal/Catch und für jedes Signal eine Position (Ausschlusszone beachtet).
+function makePlan(n, rng) {
+  var sched = makeSchedule(n, rng), k = 0, i;
+  for (i = 0; i < n; i++) if (sched[i]) k++;
+  var pos = makePositions(k, rng), plan = [], q = 0;
+  for (i = 0; i < n; i++) plan.push({ signal: sched[i], pos: sched[i] ? pos[q++] : null });
+  return plan;
+}
+function sliderToAmp(v) {   // 1 = leicht (grosse Amplitude), 100 = schwierig (kleine Amplitude)
+  return CONFIG.ampMax * Math.pow(CONFIG.ampMin / CONFIG.ampMax, (v - 1) / 99);
+}
+function classify(signal, yes) { return signal ? (yes ? 'hit' : 'miss') : (yes ? 'fa' : 'cr'); }
+
+/* ======================================================================
+   Ergebnis-Code
+   ====================================================================== */
+var CODE_VERSION = 2;
+function checksum(s) {
+  var h = 7;
+  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 46656;
+  var t = h.toString(36);
+  while (t.length < 3) t = '0' + t;
+  return t;
+}
+function newId(rng) {
+  var t = Math.floor(rng() * 1679616).toString(36);
+  while (t.length < 4) t = '0' + t;
+  return t;
+}
+// order: ['liberal','konservativ'] oder umgekehrt; cL/cK: {hit, miss, fa, cr}
+function buildCode(id, order, cL, cK) {
+  function blk(c) { return c.hit + '-' + c.miss + '-' + c.fa + '-' + c.cr; }
+  var payload = 'HSLU-sdt-v' + CODE_VERSION + '.' + id + '.' + (order[0] === 'liberal' ? 'lk' : 'kl') + '.' + blk(cL) + '.' + blk(cK);
+  return payload + '.' + checksum(payload);
+}
+function parseCode(str) {
+  var s = String(str).trim(), low = s.toLowerCase();
+  if (!/^hslu-/.test(low)) return { ok: false, reason: 'kein Ergebnis-Code' };
+  var m = /^hslu-([a-z]+)-v(\d+)\./.exec(low);
+  if (!m) return { ok: false, reason: 'kein Ergebnis-Code' };
+  if (m[1] !== 'sdt') return { ok: false, reason: 'Code gehört zu einer anderen Seite (' + m[1] + ')' };
+  if (m[2] === '1') return { ok: false, reason: 'Version v1 ist veraltet (andere Aufgabe: Fleck in der Bildmitte, 50 Durchgänge je Block) und nicht mit v2 vergleichbar. Aufgabe neu durchführen' };
+  if (m[2] !== String(CODE_VERSION)) return { ok: false, reason: 'Version v' + m[2] + ' wird nicht unterstützt' };
+  var q = /^hslu-sdt-v2\.([0-9a-z]{4})\.(lk|kl)\.(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,3})\.(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,3})\.([0-9a-z]{3})$/.exec(low);
+  if (!q) return { ok: false, reason: 'Format ungültig' };
+  var payload = 'HSLU-sdt-v2.' + low.slice('hslu-sdt-v2.'.length, low.lastIndexOf('.'));
+  if (checksum(payload) !== q[11]) return { ok: false, reason: 'Prüfsumme stimmt nicht (Tippfehler?)' };
+  function n(i) { return parseInt(q[i], 10); }
+  var L = { hit: n(3), miss: n(4), fa: n(5), cr: n(6) }, K = { hit: n(7), miss: n(8), fa: n(9), cr: n(10) };
+  if (L.hit + L.miss < 1 || L.fa + L.cr < 1 || K.hit + K.miss < 1 || K.fa + K.cr < 1) return { ok: false, reason: 'Werte unplausibel' };
+  return { ok: true, id: q[1], order: q[2] === 'lk' ? ['liberal', 'konservativ'] : ['konservativ', 'liberal'], liberal: L, konservativ: K };
+}
+
+/* ===== Hilfen ===== */
+function $(id) { return document.getElementById(id); }
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, T.instant ? 0 : ms); }); }
+function fmt2(x) { return (Math.abs(x) < 0.005 ? 0 : x).toFixed(2).replace('-', '−'); }
+function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
+function pct(k, n) { return n > 0 ? Math.round(100 * k / n) + ' %' : '–'; }
+function ratio(x) { return (Math.round(x * 100) / 100).toFixed(2); }
+var NS = 'http://www.w3.org/2000/svg';
+function el(name, attrs, parent) {
+  var e = document.createElementNS(NS, name);
+  for (var k in attrs) { if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]); }
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function copyText(text, msgEl) {
+  function fallback() {
+    var ok = false;
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); document.body.removeChild(ta);
+    } catch (e) { ok = false; }
+    msgEl.textContent = ok ? 'Kopiert.' : 'Kopieren nicht möglich. Markiere den Code und kopiere ihn von Hand.';
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { msgEl.textContent = 'Kopiert.'; }, fallback);
+    } else { fallback(); }
+  } catch (e) { fallback(); }
+}
+
+/* ======================================================================
+   Oberfläche
+   ====================================================================== */
+var VIEWS = ['view-setup', 'view-pre', 'view-run', 'view-result', 'view-group'];
+function show(id, focusId) {
+  VIEWS.forEach(function (v) { $(v).hidden = (v !== id); });
+  var f = $(focusId || '');
+  if (f) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
+  window.scrollTo(0, 0);
+}
+function live(msg) { $('live').textContent = msg; }
+
+var S = {
+  run: 0, awaiting: null, interrupted: false, inTrial: false,
+  amp: null, probeSlider: null, probeDone: false, locked: false,
+  order: null, blocks: {}, last: null, id: null, blockIndex: 0
+};
+T.log = [];
+T.exposures = [];
+
+var cv = $('cv'), g2 = cv.getContext('2d');
+var cvEx = $('cv-ex'), gEx = cvEx.getContext('2d');
+function putImage(ctx2, bytes) {
+  var img = ctx2.createImageData(CONFIG.size, CONFIG.size);
+  img.data.set(bytes);
+  ctx2.putImageData(img, 0, 0);
+}
+// Graue Fläche; mit cross = true zusätzlich das kleine Fixationskreuz in der Bildmitte.
+function drawBlank(ctx2, cross) {
+  var g = CONFIG.meanGray, n = CONFIG.size, h = n / 2;
+  ctx2.fillStyle = 'rgb(' + g + ',' + g + ',' + g + ')';
+  ctx2.fillRect(0, 0, n, n);
+  if (cross) {
+    var a = CONFIG.crossArm, w = CONFIG.crossWidth, k = CONFIG.crossGray;
+    ctx2.fillStyle = 'rgb(' + k + ',' + k + ',' + k + ')';
+    ctx2.fillRect(h - a, h - w / 2, 2 * a, w);
+    ctx2.fillRect(h - w / 2, h - a, w, 2 * a);
+  }
+}
+
+function matrixHTML(kind, compact) {
+  var p = CONFIG.payoff[kind];
+  var t = document.createElement('table');
+  t.className = 'matrix' + (compact ? ' compact' : '');
+  var cap = document.createElement('caption'); cap.className = 'sr-only'; cap.textContent = 'Punkte pro Antwort'; t.appendChild(cap);
+  var thead = document.createElement('thead'), r0 = document.createElement('tr');
+  ['', 'Antwort «Ja»', 'Antwort «Nein»'].forEach(function (h) {
+    var th = document.createElement('th'); th.scope = 'col'; th.textContent = h; r0.appendChild(th);
+  });
+  thead.appendChild(r0); t.appendChild(thead);
+  var tb = document.createElement('tbody');
+  function row(head, a, b) {
+    var tr = document.createElement('tr'), th = document.createElement('th'); th.scope = 'row'; th.textContent = head; tr.appendChild(th);
+    [a, b].forEach(function (c) {
+      var td = document.createElement('td');
+      var s = document.createElement('span'); s.textContent = OUTCOME_WORD[c];
+      var bb = document.createElement('b'); bb.textContent = signed(p[c]);
+      td.appendChild(s); td.appendChild(bb); tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+  row('Signal vorhanden', 'hit', 'miss');
+  row('Kein Signal', 'fa', 'cr');
+  t.appendChild(tb);
+  return t;
+}
+
+/* ===== Darstellung eines Durchgangs ===== */
+function frame() { return new Promise(function (r) { requestAnimationFrame(r); }); }
+// Zeichnet drawA, wechselt nach ms zu drawB. Liefert die gemessene Dauer von A.
+function exposure(ms, drawA, drawB) {
+  return new Promise(function (resolve) {
+    if (T.instant) { drawA(); drawB(); resolve(0); return; }
+    requestAnimationFrame(function () {
+      drawA();
+      var t0 = performance.now();
+      (function tick() {
+        requestAnimationFrame(function () {
+          var now = performance.now();
+          if (now - t0 >= ms - 8) { drawB(); resolve(now - t0); } else { tick(); }
+        });
+      })();
+    });
+  });
+}
+
+function setButtons(on) { $('btn-yes').disabled = !on; $('btn-no').disabled = !on; }
+function setPrompt(t) { $('run-prompt').textContent = t || ' '; }
+function setFb(t, cls) { var f = $('run-fb'); f.textContent = t || ' '; f.className = 'fb' + (cls ? ' ' + cls : ''); }
+
+function waitResponse(info) {
+  return new Promise(function (resolve) {
+    S.awaiting = { resolve: resolve };
+    setButtons(true);
+    setPrompt('Signal vorhanden?');
+    drawBlank(g2, false);
+    live('Antwort bitte: Ja oder Nein');
+    if (typeof T.observer === 'function') {
+      setTimeout(function () {
+        var a = T.observer(info);
+        if (a === true || a === 'ja' || a === 'Ja') answer(true);
+        else if (a === false || a === 'nein' || a === 'Nein') answer(false);
+      }, 0);
+    }
+  });
+}
+function answer(yes) {
+  var w = S.awaiting;
+  if (!w) return;
+  S.awaiting = null;
+  setButtons(false);
+  w.resolve(yes);
+}
+
+// Ein Reiz-Durchgang: Fixation, Reiz, Maske, Antwort. Wiederholt bei Unterbrechung.
+async function oneTrial(run, spec) {
+  for (;;) {
+    if (run !== S.run) return null;
+    setFb('');
+    setPrompt('');
+    setButtons(false);
+    drawBlank(g2, true);
+    S.interrupted = false; S.inTrial = true;
+    var stim = makeStimulus(gaussMain, spec.signal, S.amp, { pos: spec.pos });
+    var mask = makeMask(rngMain, CONFIG.size, CONFIG.maskBlock);
+    await sleep(CONFIG.fixMs);
+    if (run !== S.run) { S.inTrial = false; return null; }
+    var actual = await exposure(CONFIG.stimMs,
+      function () { putImage(g2, stim); },
+      function () { putImage(g2, mask); });
+    await sleep(CONFIG.maskMs);
+    S.inTrial = false;
+    if (run !== S.run) return null;
+    var bad = !T.instant && (S.interrupted || actual > CONFIG.stimMs + 100);
+    if (bad) {
+      T.log.push({ phase: spec.phase, block: spec.block, i: spec.i, invalid: true, expMs: actual });
+      drawBlank(g2, false);
+      setFb('Durchgang unterbrochen. Er wird wiederholt.');
+      await sleep(1200);
+      continue;
+    }
+    T.exposures.push(actual);
+    var info = { phase: spec.phase, block: spec.block, i: spec.i, signal: spec.signal, pos: spec.pos, amp: S.amp,
+                 payoff: spec.block ? CONFIG.payoff[spec.block] : null };
+    T.current = info;
+    var yes = await waitResponse(info);
+    if (yes === null || run !== S.run) return null;
+    return { yes: yes, actual: actual, outcome: classify(spec.signal, yes) };
+  }
+}
+
+async function runTrials(run, phase, block, n) {
+  var plan = makePlan(n, rngMain);
+  var counts = { hit: 0, miss: 0, fa: 0, cr: 0 }, score = 0;
+  $('run-score').hidden = !block;
+  $('run-score').textContent = 'Punkte: 0';
+  for (var i = 0; i < n; i++) {
+    $('run-count').textContent = 'Durchgang ' + (i + 1) + ' von ' + n;
+    var r = await oneTrial(run, { phase: phase, block: block, i: i, signal: plan[i].signal, pos: plan[i].pos });
+    if (!r) return null;
+    counts[r.outcome]++;
+    var pts = block ? CONFIG.payoff[block][r.outcome] : 0;
+    score += pts;
+    T.log.push({ phase: phase, block: block, i: i, signal: plan[i].signal, pos: plan[i].pos, yes: r.yes, outcome: r.outcome, points: pts, amp: S.amp, expMs: r.actual });
+    if (block) $('run-score').textContent = 'Punkte: ' + (score < 0 ? '−' + Math.abs(score) : score);
+    var good = (r.outcome === 'hit' || r.outcome === 'cr');
+    setFb(OUTCOME_WORD[r.outcome] + (block ? ': ' + signed(pts) : ''), good ? 'good' : 'bad');
+    drawBlank(g2, false);
+    setPrompt('');
+    await sleep(CONFIG.feedbackMs);
+    await sleep(CONFIG.itiMs);
+  }
+  return { counts: counts, score: score };
+}
+
+/* ===== Ablauf ===== */
+async function startProbe() {
+  S.run++;
+  var run = S.run;
+  S.amp = sliderToAmp(parseInt($('diff').value, 10));
+  var sliderNow = $('diff').value;
+  disarm();
+  show('view-run', 'h-run');
+  $('h-run').textContent = 'Probelauf';
+  $('run-matrix').hidden = true;
+  setFb(''); setPrompt(''); setButtons(false);
+  drawBlank(g2, true);
+  var res = await runTrials(run, 'probe', null, CONFIG.probeTrials);
+  if (!res) return;
+  S.probe = res; S.probeSlider = sliderNow; S.probeDone = true;
+  show('view-setup', 'btn-probe');
+  renderProbe(res);
+  live('Probelauf beendet');
+}
+function renderProbe(res) {
+  var c = res.counts, n = c.hit + c.miss + c.fa + c.cr, correct = c.hit + c.cr;
+  var p = Math.round(100 * correct / n);
+  var box = $('probe-res'); box.hidden = false; box.textContent = '';
+  var a = document.createElement('p');
+  a.innerHTML = '';
+  var strong = document.createElement('strong'); strong.textContent = 'Probelauf: ' + correct + ' von ' + n + ' richtig (' + p + ' %).';
+  a.appendChild(strong); box.appendChild(a);
+  var b = document.createElement('p'); b.className = 'hint';
+  b.textContent = 'Treffer ' + c.hit + ', Verpasser ' + c.miss + ', Fehlalarme ' + c.fa + ', Korrekte Ablehnungen ' + c.cr + '. Ziel für die Einstellung: ' + CONFIG.targetLow + ' bis ' + CONFIG.targetHigh + ' % richtig.';
+  box.appendChild(b);
+  var d = document.createElement('p');
+  d.textContent = p < CONFIG.targetLow ? 'Unter dem Ziel. Stell die Schwierigkeit weiter nach links.' :
+                  p > CONFIG.targetHigh ? 'Über dem Ziel. Stell die Schwierigkeit weiter nach rechts.' : 'Im Ziel.';
+  box.appendChild(d);
+  updateLock();
+}
+function updateLock() {
+  var ok = S.probeDone && S.probeSlider === $('diff').value && !S.locked;
+  $('btn-lock').disabled = !ok;
+  var box = $('probe-res');
+  if (S.probeDone && S.probeSlider !== $('diff').value) {
+    var hint = box.querySelector('.stale');
+    if (!hint) { hint = document.createElement('p'); hint.className = 'hint stale'; hint.textContent = 'Schwierigkeit geändert. Mach einen neuen Probelauf mit dieser Einstellung.'; box.appendChild(hint); }
+  } else {
+    var h2 = box.querySelector('.stale'); if (h2) h2.remove();
+  }
+}
+
+function lockAndStart() {
+  S.locked = true;
+  S.amp = sliderToAmp(parseInt($('diff').value, 10));
+  $('diff').disabled = true; $('btn-probe').disabled = true; $('btn-lock').disabled = true;
+  var ord = T.order;
+  if (!(ord && ord.length === 2)) ord = rngMain() < 0.5 ? ['liberal', 'konservativ'] : ['konservativ', 'liberal'];
+  S.order = ord.slice();
+  S.blocks = {};
+  S.blockIndex = 0;
+  toPre(0);
+}
+function toPre(i) {
+  S.blockIndex = i;
+  var kind = S.order[i];
+  show('view-pre', 'h-pre');
+  $('h-pre').textContent = 'Block ' + (i + 1) + ' von 2';
+  var pm = $('pre-matrix'); pm.textContent = ''; pm.appendChild(matrixHTML(kind, false));
+  var prev = $('pre-prev');
+  if (i > 0) {
+    var b = S.blocks[S.order[0]];
+    prev.hidden = false; prev.textContent = 'Block 1 beendet. Punkte: ' + (b.score < 0 ? '−' + Math.abs(b.score) : b.score) + '.';
+  } else { prev.hidden = true; }
+  live('Block ' + (i + 1) + ' von 2. Punktematrix: Verpasser ' + signed(CONFIG.payoff[kind].miss) + ', Fehlalarm ' + signed(CONFIG.payoff[kind].fa));
+}
+async function startBlock() {
+  S.run++;
+  var run = S.run, i = S.blockIndex, kind = S.order[i];
+  disarm();
+  show('view-run', 'h-run');
+  $('h-run').textContent = 'Block ' + (i + 1) + ' von 2';
+  var rm = $('run-matrix'); rm.textContent = ''; rm.appendChild(matrixHTML(kind, true)); rm.hidden = false;
+  setFb(''); setPrompt(''); setButtons(false);
+  drawBlank(g2, true);
+  var res = await runTrials(run, 'block', kind, CONFIG.trialsPerBlock);
+  if (!res) return;
+  S.blocks[kind] = { counts: res.counts, score: res.score, order: i + 1 };
+  if (i === 0) toPre(1); else finishAll();
+}
+function finishAll() {
+  S.id = newId(rngMain);
+  var r = { id: S.id, order: S.order.slice(), blocks: S.blocks, amp: S.amp };
+  ['liberal', 'konservativ'].forEach(function (k) {
+    var c = S.blocks[k].counts;
+    r.blocks[k].sdt = computeSDT(c.hit, c.miss, c.fa, c.cr);
+  });
+  r.code = buildCode(S.id, S.order, S.blocks.liberal.counts, S.blocks.konservativ.counts);
+  S.last = r; T.lastResult = r;
+  show('view-result', 'h-result');
+  renderResult(r);
+  live('Ergebnis liegt vor');
+}
+
+/* ===== Ergebnisanzeige ===== */
+function renderResult(r) {
+  var tbl = $('res-table'); tbl.textContent = '';
+  var first = r.order[0], second = r.order[1];
+  var cols = [first, second];
+  var thead = document.createElement('thead'), tr = document.createElement('tr');
+  var th0 = document.createElement('th'); th0.scope = 'col'; th0.textContent = ''; tr.appendChild(th0);
+  cols.forEach(function (k, i) {
+    var th = document.createElement('th'); th.scope = 'col'; th.className = 'num';
+    th.textContent = 'Block ' + (i + 1); var sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = BLOCK_LABEL[k]; th.appendChild(sub); tr.appendChild(th);
+  });
+  thead.appendChild(tr); tbl.appendChild(thead);
+  var tb = document.createElement('tbody');
+  function row(label, fn, cls) {
+    var r2 = document.createElement('tr'); if (cls) r2.className = cls;
+    var th = document.createElement('th'); th.scope = 'row'; th.textContent = label; r2.appendChild(th);
+    cols.forEach(function (k) { var td = document.createElement('td'); td.className = 'num'; td.textContent = fn(r.blocks[k], k); r2.appendChild(td); });
+    tb.appendChild(r2);
+  }
+  var P = CONFIG.payoff;
+  row('Punkte Treffer / Verpasser', function (b, k) { return signed(P[k].hit) + ' / ' + signed(P[k].miss); });
+  row('Punkte Fehlalarm / Korrekte Ablehnung', function (b, k) { return signed(P[k].fa) + ' / ' + signed(P[k].cr); });
+  row('Treffer', function (b) { return String(b.counts.hit); });
+  row('Verpasser', function (b) { return String(b.counts.miss); });
+  row('Fehlalarme', function (b) { return String(b.counts.fa); });
+  row('Korrekte Ablehnungen', function (b) { return String(b.counts.cr); });
+  row('Trefferrate', function (b) { return ratio(b.sdt.H0); });
+  row('Fehlalarmrate', function (b) { return ratio(b.sdt.F0); });
+  row('d′', function (b) { return fmt2(b.sdt.dprime) + (b.sdt.corrected ? ' *' : ''); }, 'sum');
+  row('Kriterium c', function (b) { return fmt2(b.sdt.c) + (b.sdt.corrected ? ' *' : ''); }, 'sum');
+  row('Punkte', function (b) { return b.score < 0 ? '−' + Math.abs(b.score) : String(b.score); });
+  tbl.appendChild(tb);
+  if (cols.some(function (k) { return r.blocks[k].sdt.corrected; })) {
+    var note = document.createElement('caption');
+    note.style.captionSide = 'bottom'; note.style.textAlign = 'left'; note.style.padding = '6px 8px'; note.className = 'hint';
+    note.textContent = '* log-linear korrigiert, weil eine Rate 0 oder 1 war.';
+    tbl.appendChild(note);
+  }
+  $('res-prec').textContent = precisionHint();
+  $('res-code').textContent = r.code;
+  $('copy-msg').textContent = '';
+  drawResultROC();
+}
+function precisionHint() {
+  var n = Math.floor(CONFIG.trialsPerBlock / 2);
+  return 'Mit nur ' + n + ' Signal- und ' + n + ' Catch-Durchgängen je Block sind d′ und c einer einzelnen Person ungenau. Mittelwerte über mehrere Personen (Gruppe auswerten) sind stabiler.';
+}
+function meanDprime(list) { var s = 0; list.forEach(function (x) { s += x; }); return s / list.length; }
+function drawResultROC() {
+  var r = S.last; if (!r) return;
+  var pts = { liberal: [{ F: r.blocks.liberal.sdt.F, H: r.blocks.liberal.sdt.H }], konservativ: [{ F: r.blocks.konservativ.sdt.F, H: r.blocks.konservativ.sdt.H }] };
+  var dm = meanDprime([r.blocks.liberal.sdt.dprime, r.blocks.konservativ.sdt.dprime]);
+  drawROC($('roc-wrap'), pts, null, dm, 'Mittleres d′ beider Blöcke');
+  fillLegend($('roc-legend'), dm, false, 'beider Blöcke');
+}
+
+/* ===== ROC-Diagramm (selbst gezeichnet, SVG) ===== */
+function drawROC(wrap, pts, means, dCurve, curveText) {
+  wrap.textContent = '';
+  var avail = wrap.clientWidth || 400;
+  var W = Math.max(260, Math.min(avail, 440)), H = W;
+  var m = { l: 46, r: 14, t: 12, b: 44 };
+  var pw = W - m.l - m.r, ph = H - m.t - m.b;
+  function X(f) { return m.l + f * pw; }
+  function Y(h) { return m.t + (1 - h) * ph; }
+  var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'chart', role: 'img' }, wrap);
+  var nL = pts.liberal.length, nK = pts.konservativ.length;
+  el('title', {}, svg).textContent = 'ROC-Diagramm: Trefferrate über Fehlalarmrate';
+  el('desc', {}, svg).textContent = nL + ' Punkte für Block «Verpasser teuer», ' + nK + ' Punkte für Block «Fehlalarm teuer». ' + curveText + ' ' + fmt2(dCurve) + '.';
+  [0, 0.25, 0.5, 0.75, 1].forEach(function (v) {
+    el('line', { x1: X(v), x2: X(v), y1: m.t, y2: m.t + ph, 'class': 'grid' }, svg);
+    el('line', { x1: m.l, x2: m.l + pw, y1: Y(v), y2: Y(v), 'class': 'grid' }, svg);
+    var lab = v === 0 ? '0' : v === 1 ? '1' : String(v).replace('0.', '.');
+    el('text', { x: X(v), y: m.t + ph + 16, 'text-anchor': 'middle' }, svg).textContent = lab;
+    el('text', { x: m.l - 7, y: Y(v) + 4, 'text-anchor': 'end' }, svg).textContent = lab;
+  });
+  el('rect', { x: m.l, y: m.t, width: pw, height: ph, fill: 'none', 'class': 'axis' }, svg);
+  el('text', { x: m.l + pw / 2, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = 'Fehlalarmrate';
+  var cy = m.t + ph / 2;
+  el('text', { x: 12, y: cy, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + cy + ')' }, svg).textContent = 'Trefferrate';
+  el('line', { x1: X(0), y1: Y(0), x2: X(1), y2: Y(1), 'class': 'diag' }, svg);
+  // Isosensitivitätskurve (gleiche Varianz): H = Phi(z(FA) + d')
+  var d = '';
+  for (var i = 0; i <= 200; i++) {
+    var z = -4 + 8 * i / 200;
+    var f = pnorm(z), h = pnorm(z + dCurve);
+    d += (i ? 'L' : 'M') + X(f).toFixed(1) + ' ' + Y(h).toFixed(1);
+  }
+  el('path', { d: d, 'class': 'curve' }, svg);
+  var rr = means ? 5 : 7;
+  function marker(kind, p, big) {
+    var x = X(p.F), y = Y(p.H), s = big ? rr + 4 : rr;
+    var cls = (kind === 'liberal' ? 'mL' : 'mK') + (big ? ' mean' : '');
+    var e;
+    if (kind === 'liberal') e = el('circle', { cx: x, cy: y, r: s, 'class': cls }, svg);
+    else e = el('path', { d: 'M' + x + ' ' + (y - s - 1) + 'L' + (x + s + 1) + ' ' + y + 'L' + x + ' ' + (y + s + 1) + 'L' + (x - s - 1) + ' ' + y + 'Z', 'class': cls }, svg);
+    if (!big && means) e.setAttribute('fill-opacity', '0.7');
+    return e;
+  }
+  pts.liberal.forEach(function (p) { marker('liberal', p, false); });
+  pts.konservativ.forEach(function (p) { marker('konservativ', p, false); });
+  if (means) { marker('liberal', means.liberal, true); marker('konservativ', means.konservativ, true); }
+}
+function fillLegend(box, dm, group, curveWho) {
+  box.textContent = '';
+  function item(svgHTML, text) {
+    var s = document.createElement('span'); s.innerHTML = svgHTML; s.appendChild(document.createTextNode(text)); box.appendChild(s);
+  }
+  var circ = '<svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="var(--accent)"/></svg>';
+  var dia = '<svg width="16" height="16" aria-hidden="true"><path d="M8 1L15 8L8 15L1 8Z" fill="var(--warn)"/></svg>';
+  item(circ, ' Block «' + BLOCK_LABEL.liberal + '»');
+  item(dia, ' Block «' + BLOCK_LABEL.konservativ + '»');
+  if (group) {
+    item('<svg width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="var(--accent)" stroke="var(--fg)" stroke-width="2.5"/></svg>', ' Mittel (Fehlalarmrate, Trefferrate)');
+  }
+  item('<svg width="22" height="14" aria-hidden="true"><path d="M1 12L21 2" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 3"/></svg>', ' Diagonale');
+  item('<svg width="22" height="14" aria-hidden="true"><path d="M1 12C8 11 14 6 21 2" stroke="var(--fg)" stroke-width="2" fill="none"/></svg>', ' Kurve für d′ = ' + fmt2(dm) + ' (gleiche Varianz, Mittel ' + curveWho + ')');
+}
+
+/* ======================================================================
+   Gruppe auswerten
+   ====================================================================== */
+function parseLines(text) {
+  var lines = String(text).split(/\r\n|\r|\n/), seen = {}, valid = [], invalid = [], dup = 0, i, j;
+  for (i = 0; i < lines.length; i++) {
+    var toks = lines[i].split(/[\s,;]+/).filter(function (x) { return x.length > 0; });
+    if (toks.length > 1 && !toks.every(function (t) { return /^hslu-/i.test(t); })) toks = [lines[i].trim()];   // Fliesstext: eine Meldung je Zeile
+    for (j = 0; j < toks.length; j++) {
+      var key = toks[j].toLowerCase();
+      if (seen[key]) { dup++; continue; }
+      seen[key] = true;
+      var p = parseCode(toks[j]);
+      if (p.ok) valid.push(p); else invalid.push({ line: i + 1, text: toks[j], reason: p.reason });
+    }
+  }
+  return { valid: valid, invalid: invalid, duplicates: dup };
+}
+function stats(vals) {
+  var n = vals.length; if (!n) return null;
+  var s = 0; vals.forEach(function (v) { s += v; });
+  var mean = s / n, sd = null;
+  if (n > 1) { var ss = 0; vals.forEach(function (v) { ss += (v - mean) * (v - mean); }); sd = Math.sqrt(ss / (n - 1)); }
+  return { n: n, mean: mean, sd: sd };
+}
+function groupSummary(valid) {
+  var rows = valid.map(function (v) {
+    var L = computeSDT(v.liberal.hit, v.liberal.miss, v.liberal.fa, v.liberal.cr);
+    var K = computeSDT(v.konservativ.hit, v.konservativ.miss, v.konservativ.fa, v.konservativ.cr);
+    return { id: v.id, order: v.order, liberal: L, konservativ: K };
+  });
+  var sum = {
+    liberal: { d: stats(rows.map(function (r) { return r.liberal.dprime; })), c: stats(rows.map(function (r) { return r.liberal.c; })),
+               H: stats(rows.map(function (r) { return r.liberal.H; })), F: stats(rows.map(function (r) { return r.liberal.F; })) },
+    konservativ: { d: stats(rows.map(function (r) { return r.konservativ.dprime; })), c: stats(rows.map(function (r) { return r.konservativ.c; })),
+                   H: stats(rows.map(function (r) { return r.konservativ.H; })), F: stats(rows.map(function (r) { return r.konservativ.F; })) }
+  };
+  var all = []; rows.forEach(function (r) { all.push(r.liberal.dprime); all.push(r.konservativ.dprime); });
+  return { rows: rows, sum: sum, dAll: stats(all) };
+}
+function renderGroup() {
+  var out = $('group-out'); out.textContent = '';
+  var res = parseLines($('group-in').value);
+  var p = document.createElement('p');
+  p.textContent = res.valid.length + ' gültige Codes' + (res.duplicates ? ', ' + res.duplicates + ' doppelte ignoriert' : '') + (res.invalid.length ? ', ' + res.invalid.length + ' ungültig' : '') + '.';
+  out.appendChild(p);
+  if (res.invalid.length) {
+    var ul = document.createElement('ul'); ul.className = 'plain';
+    res.invalid.forEach(function (x) {
+      var li = document.createElement('li'), t = x.text.length > 40 ? x.text.slice(0, 40) + '…' : x.text;
+      li.textContent = 'Zeile ' + x.line + ': «' + t + '» – ' + x.reason; ul.appendChild(li);
+    });
+    out.appendChild(ul);
+  }
+  if (!res.valid.length) { T.lastGroup = { valid: [], invalid: res.invalid, duplicates: res.duplicates }; return; }
+  var G = groupSummary(res.valid);
+  T.lastGroup = { valid: res.valid, invalid: res.invalid, duplicates: res.duplicates, summary: G };
+
+  function mkTable(head, rows, sumRows) {
+    var wrap = document.createElement('div'); wrap.className = 'scroll';
+    var t = document.createElement('table'); t.className = 'tbl';
+    var thead = document.createElement('thead'), tr = document.createElement('tr');
+    head.forEach(function (h, i) { var th = document.createElement('th'); th.scope = 'col'; th.textContent = h; if (i > 1) th.className = 'num'; tr.appendChild(th); });
+    thead.appendChild(tr); t.appendChild(thead);
+    var tb = document.createElement('tbody');
+    rows.concat(sumRows || []).forEach(function (row, ri) {
+      var r2 = document.createElement('tr'); if (ri >= rows.length) r2.className = 'sum';
+      row.forEach(function (c, i) { var td = document.createElement(i === 0 ? 'th' : 'td'); if (i === 0) td.scope = 'row'; td.textContent = c; if (i > 1) td.className = 'num'; r2.appendChild(td); });
+      tb.appendChild(r2);
+    });
+    t.appendChild(tb); wrap.appendChild(t); return wrap;
+  }
+  function star(s) { return s.corrected ? ' *' : ''; }
+  function ord(o) { return o[0] === 'liberal' ? 'V, F' : 'F, V'; }
+  var anyCorr = false;
+  var rowsMain = G.rows.map(function (r, i) {
+    if (r.liberal.corrected || r.konservativ.corrected) anyCorr = true;
+    return ['P' + (i + 1), ord(r.order), fmt2(r.liberal.dprime) + star(r.liberal), fmt2(r.liberal.c) + star(r.liberal),
+            fmt2(r.konservativ.dprime) + star(r.konservativ), fmt2(r.konservativ.c) + star(r.konservativ)];
+  });
+  function ms(s, k) { return s ? (k === 'sd' ? (s.sd === null ? '–' : fmt2(s.sd)) : fmt2(s.mean)) : '–'; }
+  var sumRows = [
+    ['Mittelwert', '', ms(G.sum.liberal.d), ms(G.sum.liberal.c), ms(G.sum.konservativ.d), ms(G.sum.konservativ.c)],
+    ['Streuung (SD)', '', ms(G.sum.liberal.d, 'sd'), ms(G.sum.liberal.c, 'sd'), ms(G.sum.konservativ.d, 'sd'), ms(G.sum.konservativ.c, 'sd')]
+  ];
+  var h3a = document.createElement('h3'); h3a.textContent = 'd′ und c je Person und Block'; out.appendChild(h3a);
+  var prec = document.createElement('p'); prec.className = 'hint'; prec.id = 'group-prec';
+  prec.textContent = 'Einzelwerte sind bei ' + CONFIG.trialsPerBlock + ' Durchgängen je Block ungenau. Die Mittelwerte über alle Personen sind stabiler.';
+  out.appendChild(prec);
+  var cap = document.createElement('p'); cap.className = 'hint';
+  cap.textContent = 'V = Block «' + BLOCK_LABEL.liberal + '», F = Block «' + BLOCK_LABEL.konservativ + '». Folge = welcher Block zuerst kam.';
+  out.appendChild(cap);
+  out.appendChild(mkTable(['Person', 'Folge', 'd′ (V)', 'c (V)', 'd′ (F)', 'c (F)'], rowsMain, sumRows));
+  if (anyCorr) { var fn = document.createElement('p'); fn.className = 'hint'; fn.textContent = '* log-linear korrigiert, weil eine Rate 0 oder 1 war.'; out.appendChild(fn); }
+
+  var det = document.createElement('details');
+  var sm = document.createElement('summary'); sm.textContent = 'Alle Zählwerte und Raten'; det.appendChild(sm);
+  var rowsDet = [];
+  G.rows.forEach(function (r, i) {
+    [['liberal', 'V'], ['konservativ', 'F']].forEach(function (b) {
+      var s = r[b[0]];
+      rowsDet.push(['P' + (i + 1), b[1], String(s.hits), String(s.misses), String(s.fas), String(s.crs), ratio(s.H0), ratio(s.F0)]);
+    });
+  });
+  det.appendChild(mkTable(['Person', 'Block', 'Treffer', 'Verpasser', 'Fehlalarme', 'Korr. Abl.', 'Trefferrate', 'Fehlalarmrate'], rowsDet));
+  out.appendChild(det);
+
+  var h3b = document.createElement('h3'); h3b.textContent = 'ROC-Diagramm der Gruppe'; out.appendChild(h3b);
+  var box = document.createElement('div'); box.className = 'chartbox'; box.id = 'group-roc'; out.appendChild(box);
+  var leg = document.createElement('div'); leg.className = 'legend'; leg.id = 'group-legend'; out.appendChild(leg);
+  drawGroupROC();
+}
+function drawGroupROC() {
+  var G = T.lastGroup && T.lastGroup.summary; if (!G) return;
+  var box = $('group-roc'); if (!box) return;
+  var pts = { liberal: G.rows.map(function (r) { return { F: r.liberal.F, H: r.liberal.H }; }),
+              konservativ: G.rows.map(function (r) { return { F: r.konservativ.F, H: r.konservativ.H }; }) };
+  var means = { liberal: { F: G.sum.liberal.F.mean, H: G.sum.liberal.H.mean }, konservativ: { F: G.sum.konservativ.F.mean, H: G.sum.konservativ.H.mean } };
+  drawROC(box, pts, means, G.dAll.mean, 'Mittleres d′ aller Personen und Blöcke');
+  fillLegend($('group-legend'), G.dAll.mean, true, 'aller Personen und Blöcke');
+}
+
+/* ======================================================================
+   Ereignisse
+   ====================================================================== */
+function toSetup() { show('view-setup', 'h-setup'); }
+function resetAll() {
+  S.run++; S.awaiting = null; S.locked = false; S.probeDone = false; S.probeSlider = null; S.last = null;
+  S.blocks = {}; S.order = null;
+  $('diff').disabled = false; $('btn-probe').disabled = false; $('btn-lock').disabled = true;
+  $('probe-res').hidden = true; $('probe-res').textContent = '';
+}
+var armed = null, armTimer = null;
+function disarm() { clearTimeout(armTimer); armed = null; $('btn-cancel').textContent = 'Abbrechen'; }
+function cancelClick() {
+  var b = $('btn-cancel');
+  if (!armed) {
+    armed = true; b.textContent = 'Wirklich abbrechen?';
+    armTimer = setTimeout(function () { armed = null; b.textContent = 'Abbrechen'; }, 4000);
+    return;
+  }
+  clearTimeout(armTimer); armed = null; b.textContent = 'Abbrechen';
+  S.run++;
+  if (S.awaiting) { var w = S.awaiting; S.awaiting = null; w.resolve(null); }
+  setButtons(false);
+  resetAll();
+  toSetup();
+}
+
+$('diff').addEventListener('input', updateLock);
+// Beispielbilder: gleiche Ortsregel wie im Test; aufeinanderfolgende Beispiele liegen an verschiedenen Stellen.
+function examplePosition() {
+  var th, d, tries = 0;
+  do {
+    th = rngMain() * 2 * Math.PI;
+    d = S.exTheta == null ? Math.PI : Math.abs(((th - S.exTheta + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+    tries++;
+  } while (d < 4 * Math.PI / 9 && tries < 50);
+  S.exTheta = th;
+  return positionAt(th, rngMain);
+}
+function example(signal) {
+  var pos = signal ? examplePosition() : null;
+  T.lastExample = { signal: signal, pos: pos };
+  var bytes = makeStimulus(gaussMain, signal, CONFIG.exampleAmp, { pos: pos });
+  putImage(gEx, bytes);
+  clearTimeout(S.exTimer);
+  S.exTimer = setTimeout(function () { drawBlank(gEx, true); }, 2500);
+}
+$('btn-ex-sig').addEventListener('click', function () { example(true); });
+$('btn-ex-no').addEventListener('click', function () { example(false); });
+$('btn-probe').addEventListener('click', startProbe);
+$('btn-lock').addEventListener('click', lockAndStart);
+$('btn-block-start').addEventListener('click', startBlock);
+$('btn-cancel').addEventListener('click', cancelClick);
+$('btn-yes').addEventListener('click', function () { answer(true); });
+$('btn-no').addEventListener('click', function () { answer(false); });
+$('btn-again').addEventListener('click', function () { resetAll(); toSetup(); });
+$('btn-copy').addEventListener('click', function () { copyText($('res-code').textContent, $('copy-msg')); });
+$('btn-group-run').addEventListener('click', renderGroup);
+$('btn-group-back').addEventListener('click', function () {
+  if (S.last) show('view-result', 'h-result'); else toSetup();
+  if (location.hash === '#gruppe') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } }
+});
+['link-group', 'link-group2'].forEach(function (id) {
+  $(id).addEventListener('click', function (e) { e.preventDefault(); show('view-group', 'h-group'); });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!S.awaiting) return;
+  var k = e.key.toLowerCase();
+  if (k === 'j') { e.preventDefault(); answer(true); }
+  else if (k === 'n') { e.preventDefault(); answer(false); }
+});
+document.addEventListener('visibilitychange', function () { if (document.hidden && S.inTrial) S.interrupted = true; });
+var rsTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(rsTimer);
+  rsTimer = setTimeout(function () {
+    if (!$('view-result').hidden && S.last) drawResultROC();
+    if (!$('view-group').hidden) drawGroupROC();
+  }, 120);
+});
+
+/* ===== Start ===== */
+// Zahlen in den Texten kommen aus CONFIG (damit Oberfläche und Konfiguration nie auseinanderlaufen)
+$('btn-probe').textContent = 'Probelauf starten (' + CONFIG.probeTrials + ' Durchgänge)';
+$('setup-hint').textContent = 'Danach folgen zwei Blöcke mit je ' + CONFIG.trialsPerBlock + ' Durchgängen. Es werden keine Daten gesendet oder gespeichert.';
+$('run-count').textContent = 'Durchgang 1 von ' + CONFIG.probeTrials;
+$('diff').value = String(CONFIG.defaultSlider);
+drawBlank(gEx, true);
+drawBlank(g2, false);
+if (location.hash === '#gruppe') show('view-group', 'h-group');
+
+/* ===== Testhaken ===== */
+T.CONFIG = CONFIG;
+T.SEED = SEED;
+T.mulberry32 = mulberry32;
+T.makeGauss = makeGauss;
+T.qnorm = qnorm;
+T.pnorm = pnorm;
+T.computeSDT = computeSDT;
+T.makeStimulus = function (seed, signal, amp, opt) { return Array.prototype.slice.call(makeStimulus(makeGauss(mulberry32(seed >>> 0)), signal, amp, opt)); };
+T.blobProfile = function (size, w, cx, cy) { return Array.prototype.slice.call(blobProfile(size, w, cx, cy)); };
+T.makeMask = function (seed) { return Array.prototype.slice.call(makeMask(mulberry32(seed >>> 0), CONFIG.size, CONFIG.maskBlock)); };
+T.makeSchedule = function (n, seed) { return makeSchedule(n, mulberry32(seed >>> 0)); };
+T.makePlan = function (n, seed) { return makePlan(n, mulberry32(seed >>> 0)); };
+T.makePositions = function (k, seed) { return makePositions(k, mulberry32(seed >>> 0)); };
+T.positionOk = positionOk;
+T.centerOf = centerOf;
+T.drawBlank = drawBlank;
+T.sliderToAmp = sliderToAmp;
+T.classify = classify;
+T.buildCode = buildCode;
+T.parseCode = parseCode;
+T.parseLines = parseLines;
+T.groupSummary = groupSummary;
+T.checksum = checksum;
+T.state = S;
+T.answer = answer;
+T.ready = true;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>GoFundMe-Simulation</title>
+<link rel="stylesheet" href="../../shared/base.css">
+<style>
+[hidden] { display: none !important; }
+.screen h1, .screen h2 { outline: none; }
+.screen > .card:last-child { margin-bottom: 0; }
+.stepinfo { font-size: .9rem; color: var(--muted); margin-bottom: 8px; }
+.lead { color: var(--muted); }
+.nav { margin-top: 16px; }
+.nav .btn { flex: 0 1 auto; }
+.privacy { font-size: .9rem; color: var(--muted); margin-top: 14px; }
+
+/* Profile */
+.profiles { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); margin: 16px 0; }
+@media (min-width: 700px) { .profiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.profile { margin: 0; }
+.photo { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; background: var(--border); }
+.profile:not(.compact) .photo { max-width: 380px; }
+.pname { font-weight: 700; font-size: 1.1rem; margin-top: 10px; }
+.pmeta { color: var(--muted); font-size: .92rem; }
+.post { margin: .5rem 0 .3rem; }
+.tags { color: var(--muted); font-size: .92rem; }
+.profile.compact .phead { display: flex; gap: 12px; align-items: flex-start; }
+.profile.compact .photo { width: 96px; height: 96px; flex: none; }
+.profile.compact .pname { margin-top: 0; }
+.field { margin-top: 14px; }
+.field > label, .field > .lbl { display: block; font-weight: 600; margin-bottom: 6px; }
+.lblrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lblrow output { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+
+/* Budget */
+.budgetbar { position: sticky; top: 0; z-index: 5; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 14px; margin-top: 16px; }
+.budgetbar .row { justify-content: space-between; }
+.budgetbar strong { font-variant-numeric: tabular-nums; }
+.budgetbar.over { border-color: var(--bad); }
+.donation { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+.donation input[type="range"] { height: 44px; margin: 0; }
+.donation .btn { padding: 0; font-size: 1.3rem; line-height: 1; }
+
+/* Skalen (Radio-Knoepfe) */
+.scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 1px 1px 0; }
+.scale.s7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.scale label { position: relative; display: block; margin: 0 -1px -1px 0; font-weight: 600; cursor: pointer; }
+.scale span { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--border); background: var(--card); font-variant-numeric: tabular-nums; }
+.scale label:hover span { border-color: var(--accent); position: relative; z-index: 1; }
+.scale input:checked + span { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); position: relative; z-index: 2; }
+.scale input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 1px; z-index: 3; position: relative; }
+@media (min-width: 561px) and (max-width: 699px) { .scale:not(.s7) { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+.anchors { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; color: var(--muted); margin-top: 4px; }
+.anchors span { flex: 1 1 0; }
+.anchors span:nth-child(2) { text-align: center; }
+.anchors span:last-child { text-align: right; }
+.anchors.two span:last-child { text-align: right; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts label { position: relative; display: block; margin: 0; font-weight: 400; cursor: pointer; }
+.opts span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
+.opts label:hover span { border-color: var(--accent); }
+.opts input:checked + span { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.opts input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.scale input.sr-only, .opts input.sr-only { top: 0; left: 0; }
+.scale label, .opts label { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 420px) {
+  .page { padding: 8px; }
+  .card { padding: 12px; }
+}
+
+/* Auswertung */
+.charts { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.chartbox { margin: 0; }
+.chartbox h3 { margin-top: 0; }
+.plot { width: 100%; min-height: 200px; }
+.plot svg { display: block; width: 100%; height: auto; }
+.plot text { fill: var(--muted); font: 12px var(--font); }
+.plot .axis-title { fill: var(--fg); font-weight: 600; }
+.plot .plabel { fill: var(--fg); font-size: 12px; }
+.plot .grid { stroke: var(--border); stroke-width: 1; }
+.plot .frame { stroke: var(--muted); stroke-width: 1; fill: none; }
+.plot .pt { stroke: var(--fg); stroke-width: .8; }
+.stat { margin: 8px 0 0; font-weight: 600; }
+.stat .val { font-variant-numeric: tabular-nums; }
+.tblwrap { margin: 8px 0 4px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tbl th, .tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.tbl thead th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl tr.me th, .tbl tr.me td { background: var(--accent-soft); }
+@media (max-width: 600px) {
+  .tbl.stack thead { display: none; }
+  .tbl.stack, .tbl.stack tbody { display: block; }
+  .tbl.stack tr { display: block; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; padding: 6px 10px; }
+  .tbl.stack th, .tbl.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 2px 0; text-align: right; background: none !important; }
+  .tbl.stack th[scope="row"] { font-size: 1rem; text-align: left; border-bottom: 1px solid var(--border); margin-bottom: 4px; padding-bottom: 4px; }
+  .tbl.stack td::before { content: attr(data-label); color: var(--muted); text-align: left; }
+  .tbl.stack td:empty { display: none; }
+}
+.codebox { margin: 8px 0; min-height: 44px; display: flex; align-items: center; }
+.status { min-height: 1.4em; font-size: .92rem; color: var(--muted); }
+textarea.codes { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; min-height: 140px; }
+.legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.msg-list { margin: 6px 0 0; padding-left: 20px; }
+:root {
+  --pc0: #0072b2; --pc1: #d55e00; --pc2: #009e73; --pc3: #cc79a7;
+  --pc4: #e69f00; --pc5: #56b4e9; --pc6: #7a4fd1; --pc7: #6b7280;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pc0: #5db0ff; --pc1: #ff8a4c; --pc2: #35d0a0; --pc3: #f0a0cf;
+    --pc4: #ffc04d; --pc5: #8fd0ff; --pc6: #b79bff; --pc7: #aab2c0;
+  }
+}
+</style>
+</head>
+<body>
+<main class="page" id="app">
+<noscript><div class="card notice warn">Diese Seite braucht JavaScript.</div></noscript>
+
+<!-- Intro -->
+<section class="screen" id="screen-intro" data-screen="intro">
+  <div class="card">
+    <h1 tabindex="-1">GoFundMe-Simulation</h1>
+    <p class="lead">In dieser kurzen Simulation triffst du Entscheidungen zu verschiedenen Hilferufen in deinem Social-Media-Feed.</p>
+    <ol>
+      <li>Du siehst sechs Hilferufe von Personen aus deinem erweiterten Umfeld oder Quartier.</li>
+      <li>Du verteilst 500 CHF virtuelles Geld nach deinem Gefühl.</li>
+      <li>Danach schätzt du die Personen ein und beantwortest ein paar kurze Fragen zu dir. Das dauert wenige Minuten.</li>
+    </ol>
+    <p class="notice"><strong>Bitte:</strong> Stell dir vor, dass die Posts und Personen echt sind und das Geld tatsächlich weitergegeben würde.</p>
+    <div class="row nav">
+      <button type="button" class="btn primary" id="btn-start">Simulation starten</button>
+      <button type="button" class="btn ghost" id="btn-group-intro">Gruppe auswerten</button>
+    </div>
+    <p class="privacy">Deine Eingaben bleiben in deinem Browser. Es werden keine Daten gesendet.</p>
+  </div>
+</section>
+
+<!-- Schritt 1: Budget -->
+<section class="screen" id="screen-budget" data-screen="budget" hidden>
+  <div class="card">
+    <div class="stepinfo">Schritt 1 von 4 · 500 CHF auf 6 Personen verteilen</div>
+    <div class="progress" aria-hidden="true"><span style="width:25%"></span></div>
+    <h2 tabindex="-1">Wem würdest du wie viel geben?</h2>
+    <p class="lead">Stell dir vor, du scrollst durch deinen Social-Media-Feed. Du siehst Posts von sechs Personen aus deinem erweiterten Umfeld, die um Unterstützung bitten. Du musst nicht alles verteilen, aber mindestens eine Person bedenken.</p>
+  </div>
+  <div class="budgetbar" id="budgetbar" role="status" aria-live="polite">
+    <div class="row">
+      <span>Nicht verteilt: <strong><span id="remaining-amount">500</span> CHF</strong></span>
+      <span class="muted">Verteilt: <span id="spent-amount">0</span> von 500 CHF</span>
+    </div>
+    <div class="hint" id="budget-warning" style="color:var(--bad)" hidden></div>
+  </div>
+  <div class="profiles" id="budget-grid"></div>
+  <div class="card">
+    <p class="hint" id="hint-budget" role="status"></p>
+    <div class="row between nav" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-back="intro">&larr; Zurück</button>
+      <button type="button" class="btn primary" id="btn-to-like" disabled>Weiter</button>
+    </div>
+  </div>
+</section>
+
+<!-- Schritt 2: Sympathie -->
+<section class="screen" id="screen-like" data-screen="like" hidden>
+  <div class="card">
+    <div class="stepinfo">Schritt 2 von 4 · Sympathie</div>
+    <div class="progress" aria-hidden="true"><span style="width:50%"></span></div>
+    <h2 tabindex="-1">Wie sympathisch wirken die Personen?</h2>
+    <p class="lead">Sieh dir die gleichen 6 Profile nochmals an. Wie sympathisch wirken sie auf dich?</p>
+  </div>
+  <div class="profiles" id="like-grid"></div>
+  <div class="card">
+    <p class="hint" id="hint-like" role="status"></p>
+    <div class="row between nav" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-back="budget">&larr; Zurück</button>
+      <button type="button" class="btn primary" id="btn-to-sim" disabled>Weiter</button>
+    </div>
+  </div>
+</section>
+
+<!-- Schritt 3: subjektive Aehnlichkeit -->
+<section class="screen" id="screen-sim" data-screen="sim" hidden>
+  <div class="card">
+    <div class="stepinfo">Schritt 3 von 4 · Einschätzung der Ähnlichkeit</div>
+    <div class="progress" aria-hidden="true"><span style="width:75%"></span></div>
+    <h2 tabindex="-1">Wie ähnlich wirken die Personen?</h2>
+    <p class="lead">Und nun: Wie ähnlich oder vertraut wirken dir diese Personen insgesamt?</p>
+  </div>
+  <div class="profiles" id="sim-grid"></div>
+  <div class="card">
+    <p class="hint" id="hint-sim" role="status"></p>
+    <div class="row between nav" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-back="like">&larr; Zurück</button>
+      <button type="button" class="btn primary" id="btn-to-self" disabled>Weiter</button>
+    </div>
+  </div>
+</section>
+
+<!-- Schritt 4: Selbstangaben -->
+<section class="screen" id="screen-self" data-screen="self" hidden>
+  <div class="card">
+    <div class="stepinfo">Schritt 4 von 4 · Kurzfragebogen</div>
+    <div class="progress" aria-hidden="true"><span style="width:100%"></span></div>
+    <h2 tabindex="-1">Ein paar Angaben zu dir</h2>
+    <p class="lead">Zum Schluss noch ein kurzer Fragebogen zu dir selbst.</p>
+
+    <div class="field">
+      <div class="lbl" id="lbl-gender">Geschlecht</div>
+      <div class="opts" role="radiogroup" aria-labelledby="lbl-gender">
+        <label><input type="radio" class="sr-only" name="self-gender" value="m"><span>Mann</span></label>
+        <label><input type="radio" class="sr-only" name="self-gender" value="f"><span>Frau</span></label>
+        <label><input type="radio" class="sr-only" name="self-gender" value="nb"><span>Non-binär / Divers</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" id="lbl-politics">Politische Orientierung (1 = klar links, 7 = klar rechts)</div>
+      <div class="scale s7" role="radiogroup" aria-labelledby="lbl-politics" id="sc-politics"></div>
+      <div class="anchors"><span>Links</span><span>Mitte</span><span>Rechts</span></div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" id="lbl-residence">Wohnort / Präferenz</div>
+      <div class="opts" role="radiogroup" aria-labelledby="lbl-residence">
+        <label><input type="radio" class="sr-only" name="self-residence" value="urban"><span>Urban (Stadt)</span></label>
+        <label><input type="radio" class="sr-only" name="self-residence" value="suburban"><span>Agglomeration</span></label>
+        <label><input type="radio" class="sr-only" name="self-residence" value="rural"><span>Ländlich</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" id="lbl-extraversion">Extraversion (1 bis 7)</div>
+      <div class="scale s7" role="radiogroup" aria-labelledby="lbl-extraversion" id="sc-extraversion"></div>
+      <div class="anchors"><span>Nach langem Tag lieber allein</span><span>egal</span><span>Nach langem Tag lieber unter Menschen</span></div>
+    </div>
+
+    <div class="field">
+      <div class="lbl" id="lbl-sensation">Erregungssuche (1 bis 7)</div>
+      <div class="scale s7" role="radiogroup" aria-labelledby="lbl-sensation" id="sc-sensation"></div>
+      <div class="anchors"><span>Mag sichere Routinen</span><span>egal</span><span>Liebt Abenteuer &amp; Risiko</span></div>
+    </div>
+
+    <p class="hint" id="hint-self" role="status" style="margin-top:14px"></p>
+    <div class="row between nav" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-back="sim">&larr; Zurück</button>
+      <button type="button" class="btn primary" id="btn-show-results" disabled>Auswertung anzeigen</button>
+    </div>
+  </div>
+</section>
+
+<!-- Auswertung -->
+<section class="screen" id="screen-results" data-screen="results" hidden>
+  <div class="card">
+    <div class="stepinfo">Ergebnisse</div>
+    <h2 tabindex="-1">Auswertung deiner Entscheidungen</h2>
+    <p class="lead">Jeder Punkt steht für eines der sechs Profile. Die x-Achse zeigt die berechnete Eigenschaftsähnlichkeit, deine subjektive Ähnlichkeit oder deine Sympathie. Die y-Achse zeigt jeweils die zugeteilte Spende.</p>
+    <p class="notice warn">Mit nur 6 Profilen ist r sehr instabil: Schon ein einzelnes Profil kann den Wert stark verändern. Die Zahlen sind nur ein Diskussionsanstoss.</p>
+  </div>
+
+  <div class="charts" id="result-charts">
+    <div class="card chartbox">
+      <h3>Eigenschaftsähnlichkeit (%) und Spende (CHF)</h3>
+      <div class="plot" id="plot-score"></div>
+      <p class="stat" id="stat-score"></p>
+    </div>
+    <div class="card chartbox">
+      <h3>Subjektive Ähnlichkeit (1–10) und Spende (CHF)</h3>
+      <div class="plot" id="plot-subj"></div>
+      <p class="stat" id="stat-subj"></p>
+    </div>
+    <div class="card chartbox">
+      <h3>Sympathie (1–10) und Spende (CHF)</h3>
+      <div class="plot" id="plot-like"></div>
+      <p class="stat" id="stat-like"></p>
+    </div>
+    <div class="card chartbox">
+      <h3>Alle Zusammenhänge (Pearson r, 6 Profile)</h3>
+      <div class="tblwrap"><table class="tbl" id="tbl-r"></table></div>
+      <p class="hint">r liegt zwischen −1 und +1. Positiv: Profile mit höheren Werten auf der x-Achse bekamen bei dir im Mittel höhere Spenden. Negativ: das Gegenteil. Bei 0 zeigt sich kein linearer Zusammenhang.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3 style="margin-top:0">Deine Angaben je Profil</h3>
+    <div class="tblwrap"><table class="tbl stack" id="tbl-values"></table></div>
+    <p class="stat" id="stat-unspent"></p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Profilmerkmale</h3>
+    <p class="hint">Die Eigenschaftsähnlichkeit wird aus diesen Merkmalen berechnet. Du hast sie beim Ausfüllen nicht gesehen. Sie ist der Mittelwert aus fünf Teilen (in Prozent, gerundet): Geschlecht (gleich = 1, sonst 0), politische Orientierung, Extraversion und Erregungssuche (je 1 minus Abstand geteilt durch 6) sowie Wohnort (gleich = 1, Stadt und Agglomeration oder Agglomeration und Land = 0.5, Stadt und Land = 0).</p>
+    <div class="tblwrap"><table class="tbl stack" id="tbl-traits"></table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Ergebnis-Code für die Gruppe</h3>
+    <p class="hint">Der Code enthält deine Spenden, Einschätzungen und Angaben zu dir, aber keinen Namen. Die Gruppe kann alle Codes unter «Gruppe auswerten» gemeinsam auswerten.</p>
+    <div class="code codebox" id="code-output" tabindex="0" aria-label="Ergebnis-Code"></div>
+    <div class="row">
+      <button type="button" class="btn primary" id="btn-copy">Code kopieren</button>
+      <span class="status" id="copy-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="row between nav">
+      <button type="button" class="btn ghost" data-back="self">&larr; Zurück</button>
+      <span class="row">
+        <button type="button" class="btn" id="btn-group-results">Gruppe auswerten</button>
+        <button type="button" class="btn ghost" id="btn-restart">Nochmal starten</button>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- Gruppe auswerten -->
+<section class="screen" id="screen-gruppe" data-screen="gruppe" hidden>
+  <div class="card">
+    <h2 tabindex="-1">Gruppe auswerten</h2>
+    <p class="lead">Füge die Ergebnis-Codes der Gruppe ein, einen Code pro Zeile. Leere Zeilen und doppelte Codes werden ignoriert.</p>
+    <label for="group-input">Ergebnis-Codes</label>
+    <textarea class="codes" id="group-input" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="HSLU-gofundme-v1.…"></textarea>
+    <div class="row nav" style="margin-top:12px">
+      <button type="button" class="btn primary" id="btn-group-run">Auswerten</button>
+      <button type="button" class="btn ghost" id="btn-group-clear">Leeren</button>
+      <button type="button" class="btn ghost" data-back="intro" id="btn-group-back">&larr; Zurück</button>
+    </div>
+    <div id="group-msgs" role="status" aria-live="polite"></div>
+  </div>
+  <div id="group-result" hidden>
+    <div class="card">
+      <h3 style="margin-top:0">Pro Person</h3>
+      <div class="tblwrap"><table class="tbl stack" id="tbl-group-persons"></table></div>
+      <p class="hint">r je Person beruht auf 6 Punkten und ist instabil. «Alle Punkte» fasst alle Personen × 6 Profile in einer Berechnung zusammen.</p>
+    </div>
+    <div class="charts">
+      <div class="card chartbox">
+        <h3>Eigenschaftsähnlichkeit (%) und Spende (CHF)</h3>
+        <div class="plot" id="gplot-score"></div>
+        <p class="stat" id="gstat-score"></p>
+      </div>
+      <div class="card chartbox">
+        <h3>Subjektive Ähnlichkeit (1–10) und Spende (CHF)</h3>
+        <div class="plot" id="gplot-subj"></div>
+        <p class="stat" id="gstat-subj"></p>
+      </div>
+      <div class="card chartbox">
+        <h3>Sympathie (1–10) und Spende (CHF)</h3>
+        <div class="plot" id="gplot-like"></div>
+        <p class="stat" id="gstat-like"></p>
+      </div>
+      <div class="card chartbox">
+        <h3>Personen</h3>
+        <ul class="legend" id="group-legend"></ul>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3 style="margin-top:0">Mittelwerte je Profil (über alle Personen)</h3>
+      <div class="tblwrap"><table class="tbl stack" id="tbl-group-profiles"></table></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+(function () {
+'use strict';
+
+/* ================= Konfiguration und Daten ================= */
+var BUDGET = 500, STEP = 10;
+var CODE_ID = 'HSLU-gofundme-v1';
+
+// Skalen der Profilmerkmale:
+// politics 1 = klar links ... 7 = klar rechts; extraversion 1 = eher allein ... 7 = eher unter Menschen;
+// sensation 1 = sichere Routinen ... 7 = Abenteuer/Risiko; residence urban | suburban | rural.
+// Reihenfolge der Profile ist Teil des Ergebnis-Codes (Version v1): nicht umordnen, ohne die Version zu erhoehen.
+var PROFILES = [
+  { id: 'alex', name: 'Alex', age: 24, gender: 'm', politics: 2, residence: 'urban', extraversion: 2, sensation: 2,
+    img: 'assets/alex.jpg', alt: 'Foto von Alex', place: 'Zürich',
+    post: 'Hey Leute, ich setze mich für ein Community-Projekt im Quartier ein: Wir wollen eine öffentliche Büchertausch-Box aufstellen. Jede Unterstützung hilft! 📚✨',
+    tags: ['#quartier', '#bücher', '#nachbarschaft', '#sharing'] },
+  { id: 'mia', name: 'Mia', age: 28, gender: 'f', politics: 6, residence: 'rural', extraversion: 6, sensation: 6,
+    img: 'assets/mia.jpg', alt: 'Foto von Mia', place: 'Entlebuch (LU)',
+    post: 'Unser Dorf-Turnverein in Entlebuch braucht neue Sportangebote für die Kinder und Jugendlichen. Ich organisiere eine Sammelaktion – jede Form von Unterstützung ist willkommen! 💪🏔️',
+    tags: ['#turnverein', '#jugend', '#sport', '#dorfleben'] },
+  { id: 'jamie', name: 'Jamie', age: 26, gender: 'nb', politics: 2, residence: 'urban', extraversion: 5, sensation: 4,
+    img: 'assets/jamie.jpg', alt: 'Foto von Jamie', place: 'Basel',
+    post: 'Ich plane eine LGBTQ+ Community-Feier im Park 🏳️‍🌈 und suche Unterstützung für Organisation und Infrastruktur. Wer hilft mit, ein sichtbares Zeichen zu setzen?',
+    tags: ['#lgbtq', '#community', '#inklusion', '#basel'] },
+  { id: 'lukas', name: 'Lukas', age: 31, gender: 'm', politics: 5, residence: 'suburban', extraversion: 3, sensation: 2,
+    img: 'assets/lukas.jpg', alt: 'Foto von Lukas', place: 'Dietikon (ZH)',
+    post: 'Unser Quartierverein möchte den Spielplatz renovieren: sicherere Geräte, neue Bänke und bessere Beleuchtung. Wir freuen uns über jede Unterstützung für das Familienquartier! 🏡',
+    tags: ['#sicherheit', '#spielplatz', '#familien', '#quartierverein'] },
+  { id: 'sara', name: 'Sara', age: 23, gender: 'f', politics: 3, residence: 'urban', extraversion: 6, sensation: 6,
+    img: 'assets/sara.jpg', alt: 'Foto von Sara', place: 'Bern',
+    post: 'Ich starte ein Urban-Gardening-Projekt auf unserem Hausdach 🌱 Wir wollen gemeinsam Gemüse anbauen und die Nachbarschaft vernetzen. Wer möchte das Projekt unterstützen?',
+    tags: ['#urbangardening', '#nachhaltigkeit', '#stadtleben', '#bern'] },
+  { id: 'thomas', name: 'Thomas', age: 26, gender: 'm', politics: 5, residence: 'rural', extraversion: 2, sensation: 3,
+    img: 'assets/thomas.jpg', alt: 'Foto von Thomas', place: 'Hitzkirch (LU)',
+    post: 'Unsere kleine Dorfkirche in Hitzkirch braucht eine grössere Renovation. Die Kirche ist Treffpunkt für Jung und Alt. Ich sammle Unterstützung, damit wir den Ort erhalten können. ⛪',
+    tags: ['#dorfkirche', '#tradition', '#gemeinschaft', '#landleben'] }
+];
+var N = PROFILES.length;
+var GENDER_LABEL = { m: 'Mann', f: 'Frau', nb: 'Non-binär / Divers' };
+var RES_LABEL = { urban: 'Urban (Stadt)', suburban: 'Agglomeration', rural: 'Ländlich' };
+var RES_CODE = { urban: 'u', suburban: 's', rural: 'r' };
+var RES_FROM = { u: 'urban', s: 'suburban', r: 'rural' };
+var GEN_CODE = { m: 'm', f: 'f', nb: 'n' };
+var GEN_FROM = { m: 'm', f: 'f', n: 'nb' };
+
+/* ================= Hilfsfunktionen ================= */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmtR(r) {
+  if (r === null || !isFinite(r)) return 'nicht berechenbar';
+  return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2);
+}
+function fmtNum(x, d) { return (Math.round(x * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d); }
+
+/* ================= Berechnung ================= */
+// Teilaehnlichkeit Wohnort in Haelften: 2 = gleich, 1 = benachbart (Agglomeration), 0 = Stadt-Land
+function residenceHalves(a, b) {
+  if (a === b) return 2;
+  return (a === 'suburban' || b === 'suburban') ? 1 : 0;
+}
+// Eigenschaftsaehnlichkeit in Prozent. Ganzzahlig in Sechsteln gerechnet (kein Gleitkommafehler):
+// Mittel aus 5 Teilen * 100 = N * 10 / 3 mit N = Summe der Teile in Sechsteln (0..30).
+function similarityPct(self, p) {
+  var n = 6 * (self.gender === p.gender ? 1 : 0)
+        + (6 - Math.abs(self.politics - p.politics))
+        + 3 * residenceHalves(self.residence, p.residence)
+        + (6 - Math.abs(self.extraversion - p.extraversion))
+        + (6 - Math.abs(self.sensation - p.sensation));
+  return Math.round(n * 10 / 3);
+}
+function pearson(x, y) {
+  var n = x.length;
+  if (n < 2 || n !== y.length) return null;
+  var constant = function (a) { return a.every(function (v) { return v === a[0]; }); };
+  if (constant(x) || constant(y)) return null;
+  var mx = 0, my = 0, i;
+  for (i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+  mx /= n; my /= n;
+  var num = 0, dx2 = 0, dy2 = 0;
+  for (i = 0; i < n; i++) {
+    var dx = x[i] - mx, dy = y[i] - my;
+    num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
+  }
+  var den = Math.sqrt(dx2 * dy2);
+  return den === 0 ? null : num / den;
+}
+// person = { don:[6], like:[6], sim:[6], self:{gender,politics,residence,extraversion,sensation} }
+function derive(person) {
+  var score = PROFILES.map(function (p) { return similarityPct(person.self, p); });
+  return {
+    score: score,
+    r: {
+      score: pearson(score, person.don),
+      subj: pearson(person.sim, person.don),
+      like: pearson(person.like, person.don),
+      scoreSubj: pearson(score, person.sim)
+    }
+  };
+}
+
+/* ================= Ergebnis-Code =================
+   HSLU-gofundme-v1.<nonce:3>.<spenden:12>.<sympathie:6>.<aehnlichkeit:6>.<selbst:5>.<pruefsumme:2>
+   Alles Kleinbuchstaben/Ziffern. Spenden: je 2 Zeichen Base36 von Betrag/10 (00..1e).
+   Skalenwerte 1..10 als ein Base36-Zeichen (1..9, a = 10). Selbst: Geschlecht (m|f|n), Politik 1-7,
+   Wohnort (u|s|r), Extraversion 1-7, Erregungssuche 1-7. Pruefsumme: h = (h*31 + zeichencode) mod 1296.   */
+function checksum(s) {
+  var h = 7;
+  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1296;
+  var t = h.toString(36);
+  return t.length < 2 ? '0' + t : t;
+}
+function randomNonce() {
+  var out = '', i, v;
+  try {
+    var a = new Uint32Array(3);
+    window.crypto.getRandomValues(a);
+    for (i = 0; i < 3; i++) out += (a[i] % 36).toString(36);
+  } catch (e) {
+    for (i = 0; i < 3; i++) { v = Math.floor(Math.random() * 36); out += v.toString(36); }
+  }
+  return out;
+}
+function encodePerson(person, nonce) {
+  var d = person.don.map(function (v) { var t = (v / STEP).toString(36); return t.length < 2 ? '0' + t : t; }).join('');
+  var l = person.like.map(function (v) { return v.toString(36); }).join('');
+  var s = person.sim.map(function (v) { return v.toString(36); }).join('');
+  var me = person.self;
+  var m = GEN_CODE[me.gender] + me.politics + RES_CODE[me.residence] + me.extraversion + me.sensation;
+  var body = (nonce || randomNonce()) + '.' + d + '.' + l + '.' + s + '.' + m;
+  return CODE_ID + '.' + body + '.' + checksum(body);
+}
+// Gibt { ok:true, person, key } oder { ok:false, reason } zurueck.
+function decodeLine(raw) {
+  var line = String(raw).replace(/[\s​-‍﻿]/g, '');
+  if (!line) return { ok: false, reason: 'leer' };
+  var low = line.toLowerCase();
+  if (low.indexOf('hslu-') === 0 && low.indexOf('hslu-gofundme-') !== 0) {
+    return { ok: false, reason: 'gehört zu einer anderen Seite (Kennung ' + line.split('.')[0].slice(0, 24) + ')' };
+  }
+  if (low.indexOf('hslu-gofundme-') !== 0) return { ok: false, reason: 'kein Ergebnis-Code dieser Seite' };
+  if (low.indexOf(CODE_ID.toLowerCase() + '.') !== 0) return { ok: false, reason: 'andere Version des Codes' };
+  var rest = low.slice(CODE_ID.length + 1);
+  var parts = rest.split('.');
+  if (parts.length !== 6) return { ok: false, reason: 'Format stimmt nicht' };
+  var nonce = parts[0], d = parts[1], l = parts[2], s = parts[3], m = parts[4], c = parts[5];
+  if (!/^[0-9a-z]{3}$/.test(nonce) || !/^[0-9a-z]{12}$/.test(d) || !/^[0-9a-z]{6}$/.test(l) ||
+      !/^[0-9a-z]{6}$/.test(s) || !/^[0-9a-z]{5}$/.test(m) || !/^[0-9a-z]{2}$/.test(c)) {
+    return { ok: false, reason: 'Format stimmt nicht (Zeichen oder Länge)' };
+  }
+  var body = parts.slice(0, 5).join('.');
+  if (checksum(body) !== c) return { ok: false, reason: 'Prüfsumme stimmt nicht (Tippfehler oder abgeschnitten?)' };
+  var don = [], like = [], sim = [], i, v;
+  var total = 0;
+  for (i = 0; i < N; i++) {
+    v = parseInt(d.substr(i * 2, 2), 36);
+    if (isNaN(v) || v < 0 || v > BUDGET / STEP) return { ok: false, reason: 'Spende ausserhalb 0 bis 500' };
+    total += v; don.push(v * STEP);
+  }
+  if (total * STEP > BUDGET) return { ok: false, reason: 'Spenden ergeben mehr als 500 CHF' };
+  if (total === 0) return { ok: false, reason: 'keine Spende verteilt' };
+  for (i = 0; i < N; i++) {
+    v = parseInt(l.charAt(i), 36);
+    if (isNaN(v) || v < 1 || v > 10) return { ok: false, reason: 'Sympathie ausserhalb 1 bis 10' };
+    like.push(v);
+    v = parseInt(s.charAt(i), 36);
+    if (isNaN(v) || v < 1 || v > 10) return { ok: false, reason: 'Ähnlichkeit ausserhalb 1 bis 10' };
+    sim.push(v);
+  }
+  var g = GEN_FROM[m.charAt(0)], pol = parseInt(m.charAt(1), 10), res = RES_FROM[m.charAt(2)],
+      ex = parseInt(m.charAt(3), 10), se = parseInt(m.charAt(4), 10);
+  if (!g || !res || !(pol >= 1 && pol <= 7) || !(ex >= 1 && ex <= 7) || !(se >= 1 && se <= 7)) {
+    return { ok: false, reason: 'Selbstangaben ungültig' };
+  }
+  return {
+    ok: true, key: CODE_ID.toLowerCase() + '.' + rest,
+    person: { don: don, like: like, sim: sim, self: { gender: g, politics: pol, residence: res, extraversion: ex, sensation: se } }
+  };
+}
+
+/* ================= Streudiagramm (SVG, ohne Bibliothek) ================= */
+function yTicks(maxVal) {
+  var cands = [10, 20, 25, 50, 100, 200, 250, 500], step = 500, i;
+  var m = Math.max(maxVal, 10);
+  for (i = 0; i < cands.length; i++) { if (Math.ceil(m / cands[i]) <= 6) { step = cands[i]; break; } }
+  var top = Math.ceil(m / step) * step, t = [];
+  for (var v = 0; v <= top; v += step) t.push(v);
+  return t;
+}
+function shapeSvg(shape, x, y, r, cls, style, title) {
+  var t = title ? '<title>' + esc(title) + '</title>' : '';
+  var a = 'class="pt ' + cls + '" style="' + style + '"';
+  if (shape === 1) return '<rect ' + a + ' x="' + (x - r) + '" y="' + (y - r) + '" width="' + (2 * r) + '" height="' + (2 * r) + '">' + t + '</rect>';
+  if (shape === 2) return '<path ' + a + ' d="M' + x + ' ' + (y - r * 1.2) + 'L' + (x + r * 1.15) + ' ' + (y + r * .85) + 'L' + (x - r * 1.15) + ' ' + (y + r * .85) + 'Z">' + t + '</path>';
+  if (shape === 3) return '<path ' + a + ' d="M' + x + ' ' + (y - r * 1.25) + 'L' + (x + r * 1.25) + ' ' + y + 'L' + x + ' ' + (y + r * 1.25) + 'L' + (x - r * 1.25) + ' ' + y + 'Z">' + t + '</path>';
+  return '<circle ' + a + ' cx="' + x + '" cy="' + y + '" r="' + r + '">' + t + '</circle>';
+}
+// cfg: { host, xLabel, yLabel, xMin, xMax, xTicks, pts:[{x,y,label,color,shape,title}], showLabels, radius, aria }
+function drawScatter(cfg) {
+  var host = cfg.host;
+  var W = Math.max(260, Math.floor(host.clientWidth || host.parentNode.clientWidth || 300));
+  var H = Math.round(Math.min(360, Math.max(240, W * 0.72)));
+  var mL = 54, mR = 14, mT = 12, mB = 48;
+  var pw = W - mL - mR, ph = H - mT - mB;
+  var maxY = 0;
+  cfg.pts.forEach(function (p) { if (p.y > maxY) maxY = p.y; });
+  var yt = yTicks(maxY), yMax = yt[yt.length - 1];
+  var sx = function (v) { return mL + (v - cfg.xMin) / (cfg.xMax - cfg.xMin) * pw; };
+  var sy = function (v) { return mT + ph - v / yMax * ph; };
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H +
+          '" role="img" aria-label="' + esc(cfg.aria) + '">';
+  yt.forEach(function (v) {
+    s += '<line class="grid" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + sy(v) + '" y2="' + sy(v) + '"/>' +
+         '<text x="' + (mL - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + '</text>';
+  });
+  cfg.xTicks.forEach(function (v) {
+    s += '<line class="grid" x1="' + sx(v) + '" x2="' + sx(v) + '" y1="' + mT + '" y2="' + (mT + ph) + '"/>' +
+         '<text x="' + sx(v) + '" y="' + (mT + ph + 16) + '" text-anchor="middle">' + v + '</text>';
+  });
+  s += '<rect class="frame" x="' + mL + '" y="' + mT + '" width="' + pw + '" height="' + ph + '"/>';
+  s += '<text class="axis-title" x="' + (mL + pw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(cfg.xLabel) + '</text>';
+  s += '<text class="axis-title" transform="translate(14 ' + (mT + ph / 2) + ') rotate(-90)" text-anchor="middle">' + esc(cfg.yLabel) + '</text>';
+
+  // Punkte; exakt gleiche Positionen werden leicht versetzt (nur Darstellung)
+  var seen = {}, r = cfg.radius || 6, placed = [], labelsSvg = '', pointsSvg = '';
+  cfg.pts.forEach(function (p) {
+    var key = p.x + '|' + p.y, k = seen[key] || 0;
+    seen[key] = k + 1;
+    var off = cfg.showLabels ? (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * (r + 3) : 0;
+    p.px = sx(p.x) + (k === 0 ? 0 : off);
+    p.py = sy(p.y);
+  });
+  cfg.pts.forEach(function (p) {
+    pointsSvg += shapeSvg(p.shape || 0, p.px, p.py, r, '', 'fill:' + p.color, p.title || p.label);
+  });
+  if (cfg.showLabels) {
+    cfg.pts.forEach(function (p) {
+      var w = p.label.length * 6.8 + 2, h = 14;
+      var cands = [
+        { x: p.px + r + 3, y: p.py + 4, a: 'start', bx: p.px + r + 3, by: p.py - 10 },
+        { x: p.px - r - 3, y: p.py + 4, a: 'end', bx: p.px - r - 3 - w, by: p.py - 10 },
+        { x: p.px, y: p.py - r - 5, a: 'middle', bx: p.px - w / 2, by: p.py - r - 17 },
+        { x: p.px, y: p.py + r + 14, a: 'middle', bx: p.px - w / 2, by: p.py + r + 3 }
+      ];
+      var chosen = cands[0], i;
+      for (i = 0; i < cands.length; i++) {
+        var c = cands[i], ok = c.bx >= mL + 1 && c.bx + w <= W - mR + 6 && c.by >= mT + 1 && c.by + h <= mT + ph - 1;
+        if (ok) {
+          for (var j = 0; j < placed.length; j++) {
+            var q = placed[j];
+            if (c.bx < q.bx + q.w && c.bx + w > q.bx && c.by < q.by + q.h && c.by + h > q.by) { ok = false; break; }
+          }
+        }
+        if (ok) { chosen = c; break; }
+      }
+      placed.push({ bx: chosen.bx, by: chosen.by, w: w, h: h });
+      labelsSvg += '<text class="plabel" x="' + chosen.x + '" y="' + chosen.y + '" text-anchor="' + chosen.a + '">' + esc(p.label) + '</text>';
+    });
+  }
+  s += pointsSvg + labelsSvg + '</svg>';
+  host.innerHTML = s;
+}
+
+/* ================= Tabellen ================= */
+function th(txt) { return '<th scope="col"' + (arguments[1] ? ' class="num"' : '') + '>' + esc(txt) + '</th>'; }
+
+function setR(el, label, r) {
+  el.innerHTML = esc(label) + ': <span class="val" data-r="' + (r === null ? 'na' : r) + '">' + esc(fmtR(r)) + '</span>' +
+    (r === null ? ' <span class="muted" style="font-weight:400">(alle Werte einer Achse sind gleich)</span>' : '');
+}
+
+/* ================= Zustand ================= */
+var state = null;
+function freshState() {
+  var s = { don: {}, like: {}, sim: {}, self: { gender: null, politics: null, residence: null, extraversion: null, sensation: null } };
+  PROFILES.forEach(function (p) { s.don[p.id] = 0; });
+  return s;
+}
+state = freshState();
+
+/* ================= Aufbau der Bildschirme ================= */
+function scaleHtml(name, min, max, cls) {
+  var h = '';
+  for (var v = min; v <= max; v++) {
+    h += '<label><input type="radio" class="sr-only" name="' + name + '" value="' + v + '"><span>' + v + '</span></label>';
+  }
+  return h;
+}
+function profileHead(p, compact) {
+  var img = '<img class="photo" src="' + p.img + '" alt="' + esc(p.alt) + '" width="640" height="640" decoding="async">';
+  var meta = '<div class="pname">' + esc(p.name) + ', ' + p.age + '</div><div class="pmeta">' + esc(p.place) + '</div>';
+  var tags = '<div class="tags">' + p.tags.map(esc).join(' ') + '</div>';
+  var post = '<p class="post">' + esc(p.post) + '</p>';
+  if (compact) {
+    return '<div class="phead">' + img + '<div>' + meta + tags + '</div></div>' + post;
+  }
+  return img + meta + post + tags;
+}
+function buildBudget() {
+  $('budget-grid').innerHTML = PROFILES.map(function (p) {
+    return '<article class="card profile">' + profileHead(p, false) +
+      '<div class="field"><div class="lblrow"><label for="don-' + p.id + '">Wie viel würdest du ' + esc(p.name) + ' geben? (0–500 CHF)</label>' +
+      '<output id="amt-' + p.id + '" for="don-' + p.id + '">0 CHF</output></div>' +
+      '<div class="donation">' +
+      '<button type="button" class="btn" data-step="-' + STEP + '" data-for="don-' + p.id + '" aria-label="' + STEP + ' CHF weniger für ' + esc(p.name) + '">−</button>' +
+      '<input type="range" id="don-' + p.id + '" data-id="' + p.id + '" min="0" max="' + BUDGET + '" step="' + STEP + '" value="0">' +
+      '<button type="button" class="btn" data-step="' + STEP + '" data-for="don-' + p.id + '" aria-label="' + STEP + ' CHF mehr für ' + esc(p.name) + '">+</button>' +
+      '</div></div></article>';
+  }).join('');
+}
+function buildRating(gridId, prefix, question, lo, hi) {
+  $(gridId).innerHTML = PROFILES.map(function (p) {
+    var lid = prefix + '-lbl-' + p.id;
+    return '<article class="card profile compact">' + profileHead(p, true) +
+      '<div class="field"><div class="lbl" id="' + lid + '">' + question.replace('{n}', esc(p.name)) + '</div>' +
+      '<div class="scale" role="radiogroup" aria-labelledby="' + lid + '">' + scaleHtml(prefix + '-' + p.id, 1, 10) + '</div>' +
+      '<div class="anchors two"><span>1 = ' + lo + '</span><span></span><span>10 = ' + hi + '</span></div></div></article>';
+  }).join('');
+}
+function buildAll() {
+  buildBudget();
+  buildRating('like-grid', 'like', 'Wie sympathisch wirkt {n} auf dich? (1–10)', 'gar nicht sympathisch', 'sehr sympathisch');
+  buildRating('sim-grid', 'sim', 'Wie ähnlich/vertraut fühlt sich {n} für dich an? (1–10)', 'gar nicht ähnlich', 'sehr ähnlich');
+  ['politics', 'extraversion', 'sensation'].forEach(function (k) {
+    $('sc-' + k).innerHTML = scaleHtml('self-' + k, 1, 7);
+  });
+}
+
+/* ================= Eine Funktion fuer alle Aktivierungen ================= */
+function totalSpent() {
+  return PROFILES.reduce(function (a, p) { return a + (state.don[p.id] || 0); }, 0);
+}
+function selfMissing() {
+  var m = [], s = state.self;
+  if (!s.gender) m.push('Geschlecht');
+  if (!s.politics) m.push('politische Orientierung');
+  if (!s.residence) m.push('Wohnort');
+  if (!s.extraversion) m.push('Extraversion');
+  if (!s.sensation) m.push('Erregungssuche');
+  return m;
+}
+function missingNames(map) {
+  return PROFILES.filter(function (p) { return !map[p.id]; }).map(function (p) { return p.name; });
+}
+function updateUi() {
+  var total = totalSpent(), remaining = BUDGET - total;
+  PROFILES.forEach(function (p) {
+    var o = $('amt-' + p.id), r = $('don-' + p.id);
+    if (o) o.textContent = state.don[p.id] + ' CHF';
+    if (r) r.setAttribute('aria-valuetext', state.don[p.id] + ' CHF');
+  });
+  $('remaining-amount').textContent = remaining;
+  $('spent-amount').textContent = total;
+  var over = remaining < 0, bar = $('budgetbar');
+  bar.classList.toggle('over', over);
+  var w = $('budget-warning');
+  w.hidden = !over;
+  w.textContent = over ? 'Die Verteilung darf insgesamt maximal ' + BUDGET + ' CHF betragen. Du hast ' + (-remaining) + ' CHF zu viel verteilt.' : '';
+  var budgetOk = !over && total > 0;
+  $('btn-to-like').disabled = !budgetOk;
+  $('hint-budget').textContent = over ? 'Verringere einzelne Beträge, bis die Summe höchstens ' + BUDGET + ' CHF beträgt.'
+    : (total === 0 ? 'Verteile bei mindestens einer Person einen Betrag grösser als 0.'
+      : (remaining > 0 ? remaining + ' CHF bleiben nicht verteilt. Das ist in Ordnung.' : 'Das ganze Budget ist verteilt.'));
+
+  var ml = missingNames(state.like);
+  $('btn-to-sim').disabled = ml.length > 0;
+  $('hint-like').textContent = ml.length ? 'Noch nicht bewertet: ' + ml.join(', ') + '.' : '';
+  var ms = missingNames(state.sim);
+  $('btn-to-self').disabled = ms.length > 0;
+  $('hint-sim').textContent = ms.length ? 'Noch nicht bewertet: ' + ms.join(', ') + '.' : '';
+  var mf = selfMissing();
+  $('btn-show-results').disabled = mf.length > 0;
+  $('hint-self').textContent = mf.length ? 'Noch offen: ' + mf.join(', ') + '.' : '';
+}
+
+/* ================= Navigation (mit Browser-Verlauf) ================= */
+var SCREENS = ['intro', 'budget', 'like', 'sim', 'self', 'results', 'gruppe'];
+var current = null, histIndex = 0, lastTrigger = 'intro';
+
+function isComplete() {
+  return totalSpent() > 0 && totalSpent() <= BUDGET && !missingNames(state.like).length &&
+         !missingNames(state.sim).length && !selfMissing().length;
+}
+function showScreen(name) {
+  if (SCREENS.indexOf(name) < 0) name = 'intro';
+  if (name === 'results' && !isComplete()) name = 'intro';
+  SCREENS.forEach(function (s) { $('screen-' + s).hidden = s !== name; });
+  current = name;
+  if (name === 'results') renderResults();
+  window.scrollTo(0, 0);
+  var h = $('screen-' + name).querySelector('h1, h2');
+  if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+}
+function go(name) {
+  if (name === current) return;
+  histIndex++;
+  try { history.pushState({ s: name, i: histIndex }, '', '#' + name); } catch (e) { /* ohne Verlauf weiter */ }
+  showScreen(name);
+}
+function back(target) {
+  if (histIndex > 0) {
+    try { history.back(); return; } catch (e) { /* weiter unten */ }
+  }
+  showScreen(target);
+}
+window.addEventListener('popstate', function (e) {
+  var st = e.state;
+  histIndex = st && typeof st.i === 'number' ? st.i : 0;
+  showScreen(st && st.s ? st.s : 'intro');
+});
+
+/* ================= Auswertung (eine Person) ================= */
+var X_SCORE = { min: 0, max: 100, ticks: [0, 20, 40, 60, 80, 100] };
+var X_SCALE = { min: 0.5, max: 10.5, ticks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] };
+
+function personFromState() {
+  return {
+    don: PROFILES.map(function (p) { return state.don[p.id]; }),
+    like: PROFILES.map(function (p) { return state.like[p.id]; }),
+    sim: PROFILES.map(function (p) { return state.sim[p.id]; }),
+    self: {
+      gender: state.self.gender, politics: state.self.politics, residence: state.self.residence,
+      extraversion: state.self.extraversion, sensation: state.self.sensation
+    }
+  };
+}
+var lastPerson = null, lastDerived = null;
+
+function renderIndividualCharts() {
+  if (!lastPerson) return;
+  var person = lastPerson, d = lastDerived;
+  var defs = [
+    { host: 'plot-score', xs: d.score, cfg: X_SCORE, xLabel: 'Eigenschaftsähnlichkeit (%)', name: 'Eigenschaftsähnlichkeit' },
+    { host: 'plot-subj', xs: person.sim, cfg: X_SCALE, xLabel: 'Subjektive Ähnlichkeit (1–10)', name: 'subjektive Ähnlichkeit' },
+    { host: 'plot-like', xs: person.like, cfg: X_SCALE, xLabel: 'Sympathie (1–10)', name: 'Sympathie' }
+  ];
+  defs.forEach(function (df) {
+    drawScatter({
+      host: $(df.host), xLabel: df.xLabel, yLabel: 'Spende (CHF)', xMin: df.cfg.min, xMax: df.cfg.max, xTicks: df.cfg.ticks,
+      showLabels: true, radius: 6,
+      aria: 'Streudiagramm: ' + df.name + ' (x) und Spende in CHF (y) für sechs Profile. Die Werte stehen auch in der Tabelle.',
+      pts: PROFILES.map(function (p, i) {
+        return { x: df.xs[i], y: person.don[i], label: p.name, color: 'var(--accent)', shape: 0,
+                 title: p.name + ': ' + df.xs[i] + ' / ' + person.don[i] + ' CHF' };
+      })
+    });
+  });
+}
+function renderResults() {
+  var person = personFromState(), d = derive(person);
+  lastPerson = person; lastDerived = d;
+  renderIndividualCharts();
+  setR($('stat-score'), 'r (Eigenschaftsähnlichkeit, Spende)', d.r.score);
+  setR($('stat-subj'), 'r (subjektive Ähnlichkeit, Spende)', d.r.subj);
+  setR($('stat-like'), 'r (Sympathie, Spende)', d.r.like);
+
+  var rows = [
+    ['Eigenschaftsähnlichkeit und Spende', d.r.score, 'score-don'],
+    ['Subjektive Ähnlichkeit und Spende', d.r.subj, 'subj-don'],
+    ['Sympathie und Spende', d.r.like, 'like-don'],
+    ['Eigenschaftsähnlichkeit und subjektive Ähnlichkeit', d.r.scoreSubj, 'score-subj']
+  ];
+  $('tbl-r').innerHTML = '<thead><tr><th scope="col">Zusammenhang</th><th scope="col" class="num">r</th></tr></thead><tbody>' +
+    rows.map(function (r) {
+      return '<tr><th scope="row" style="font-weight:400">' + esc(r[0]) + '</th><td class="num" data-r-key="' + r[2] + '" data-r="' + (r[1] === null ? 'na' : r[1]) + '">' + esc(fmtR(r[1])) + '</td></tr>';
+    }).join('') + '</tbody>';
+
+  $('tbl-values').innerHTML = '<thead><tr>' + th('Profil') + th('Spende (CHF)', 1) + th('Sympathie (1–10)', 1) +
+    th('Subjektive Ähnlichkeit (1–10)', 1) + th('Eigenschaftsähnlichkeit (%)', 1) + '</tr></thead><tbody>' +
+    PROFILES.map(function (p, i) {
+      return '<tr data-profile="' + p.id + '"><th scope="row">' + esc(p.name) + '</th>' +
+        '<td class="num" data-label="Spende (CHF)">' + person.don[i] + '</td>' +
+        '<td class="num" data-label="Sympathie (1–10)">' + person.like[i] + '</td>' +
+        '<td class="num" data-label="Subjektive Ähnlichkeit (1–10)">' + person.sim[i] + '</td>' +
+        '<td class="num" data-label="Eigenschaftsähnlichkeit (%)">' + d.score[i] + '</td></tr>';
+    }).join('') + '</tbody>';
+  var left = BUDGET - totalSpent();
+  $('stat-unspent').innerHTML = 'Nicht verteilt: <span id="unspent-val">' + left + '</span> CHF (von ' + BUDGET + ' CHF)';
+
+  var me = person.self;
+  function traitRow(name, cls, g, pol, res, ex, se) {
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><th scope="row">' + esc(name) + '</th>' +
+      '<td data-label="Geschlecht">' + esc(GENDER_LABEL[g]) + '</td>' +
+      '<td data-label="Wohnort">' + esc(RES_LABEL[res]) + '</td>' +
+      '<td class="num" data-label="Politik (1 = links, 7 = rechts)">' + pol + '</td>' +
+      '<td class="num" data-label="Extraversion (1–7)">' + ex + '</td>' +
+      '<td class="num" data-label="Erregungssuche (1–7)">' + se + '</td></tr>';
+  }
+  $('tbl-traits').innerHTML = '<thead><tr>' + th('Profil') + th('Geschlecht') + th('Wohnort') + th('Politik (1 = links, 7 = rechts)', 1) +
+    th('Extraversion (1–7)', 1) + th('Erregungssuche (1–7)', 1) + '</tr></thead><tbody>' +
+    traitRow('Du', 'me', me.gender, me.politics, me.residence, me.extraversion, me.sensation) +
+    PROFILES.map(function (p) { return traitRow(p.name, '', p.gender, p.politics, p.residence, p.extraversion, p.sensation); }).join('') + '</tbody>';
+
+  $('code-output').textContent = encodePerson(person);
+  $('copy-status').textContent = '';
+}
+
+/* ================= Gruppe auswerten ================= */
+var lastGroup = null;
+function personColor(i) { return 'var(--pc' + (i % 8) + ')'; }
+function personShape(i) { return Math.floor(i / 8) % 4; }
+function swatch(i) {
+  return '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">' + shapeSvg(personShape(i), 8, 8, 5, '', 'fill:' + personColor(i), '') + '</svg>';
+}
+function parseGroup(text) {
+  var lines = String(text).split(/\r?\n/), seen = {}, persons = [], invalid = [], dups = [];
+  lines.forEach(function (raw, idx) {
+    if (!raw.replace(/[\s​-‍﻿]/g, '')) return;
+    var res = decodeLine(raw);
+    if (!res.ok) { invalid.push({ line: idx + 1, text: raw.trim(), reason: res.reason }); return; }
+    if (seen[res.key] !== undefined) { dups.push({ line: idx + 1, of: seen[res.key] }); return; }
+    seen[res.key] = idx + 1;
+    persons.push({ line: idx + 1, person: res.person, derived: derive(res.person) });
+  });
+  return { persons: persons, invalid: invalid, dups: dups };
+}
+function mean(a) { return a.reduce(function (x, y) { return x + y; }, 0) / a.length; }
+function renderGroupCharts() {
+  if (!lastGroup || !lastGroup.persons.length) return;
+  var ps = lastGroup.persons;
+  var defs = [
+    { host: 'gplot-score', key: 'score', cfg: X_SCORE, xLabel: 'Eigenschaftsähnlichkeit (%)' },
+    { host: 'gplot-subj', key: 'sim', cfg: X_SCALE, xLabel: 'Subjektive Ähnlichkeit (1–10)' },
+    { host: 'gplot-like', key: 'like', cfg: X_SCALE, xLabel: 'Sympathie (1–10)' }
+  ];
+  defs.forEach(function (df) {
+    var pts = [];
+    ps.forEach(function (q, i) {
+      PROFILES.forEach(function (p, k) {
+        var x = df.key === 'score' ? q.derived.score[k] : q.person[df.key][k];
+        pts.push({ x: x, y: q.person.don[k], label: 'P' + (i + 1), color: personColor(i), shape: personShape(i),
+                   title: 'Person ' + (i + 1) + ', ' + p.name + ': ' + x + ' / ' + q.person.don[k] + ' CHF' });
+      });
+    });
+    drawScatter({
+      host: $(df.host), xLabel: df.xLabel, yLabel: 'Spende (CHF)', xMin: df.cfg.min, xMax: df.cfg.max, xTicks: df.cfg.ticks,
+      showLabels: false, radius: 4.5,
+      aria: 'Streudiagramm aller Personen: ' + df.xLabel + ' (x) und Spende in CHF (y). ' + pts.length + ' Punkte.',
+      pts: pts
+    });
+  });
+}
+function renderGroup(g) {
+  var ps = g.persons, msgs = '';
+  msgs += '<p><strong>' + ps.length + ' ' + (ps.length === 1 ? 'Person' : 'Personen') + '</strong> eingelesen.</p>';
+  if (g.invalid.length) {
+    msgs += '<div class="notice warn" style="margin-top:8px"><strong>' + g.invalid.length + ' ungültige ' + (g.invalid.length === 1 ? 'Zeile' : 'Zeilen') + ' (nicht ausgewertet):</strong><ul class="msg-list">' +
+      g.invalid.map(function (x) {
+        var t = x.text.length > 30 ? x.text.slice(0, 30) + '…' : x.text;
+        return '<li>Zeile ' + x.line + ': ' + esc(x.reason) + ' (' + esc(t) + ')</li>';
+      }).join('') + '</ul></div>';
+  }
+  if (g.dups.length) {
+    msgs += '<div class="notice" style="margin-top:8px"><strong>' + g.dups.length + ' ' + (g.dups.length === 1 ? 'Duplikat' : 'Duplikate') + ' ignoriert:</strong><ul class="msg-list">' +
+      g.dups.map(function (x) { return '<li>Zeile ' + x.line + ' ist gleich wie Zeile ' + x.of + '.</li>'; }).join('') + '</ul></div>';
+  }
+  if (!ps.length) msgs += '<p class="muted">Keine gültigen Codes. Füge pro Zeile einen Code ein, der mit «' + CODE_ID + '» beginnt.</p>';
+  $('group-msgs').innerHTML = msgs;
+  lastGroup = g;
+  $('group-result').hidden = !ps.length;
+  if (!ps.length) return;
+
+  var pooled = { score: [], subj: [], like: [], don: [] };
+  ps.forEach(function (q) {
+    q.derived.score.forEach(function (v) { pooled.score.push(v); });
+    q.person.sim.forEach(function (v) { pooled.subj.push(v); });
+    q.person.like.forEach(function (v) { pooled.like.push(v); });
+    q.person.don.forEach(function (v) { pooled.don.push(v); });
+  });
+  var pr = { score: pearson(pooled.score, pooled.don), subj: pearson(pooled.subj, pooled.don), like: pearson(pooled.like, pooled.don) };
+  function rCell(label, r, key) {
+    return '<td class="num" data-label="' + esc(label) + '" data-r="' + (r === null ? 'na' : r) + '"' + (key ? ' data-key="' + key + '"' : '') + '>' + esc(fmtR(r)) + '</td>';
+  }
+  var H1 = 'r Spende und Eigenschaftsähnlichkeit', H2 = 'r Spende und subjektive Ähnlichkeit', H3 = 'r Spende und Sympathie';
+  var rows = ps.map(function (q, i) {
+    var spent = q.person.don.reduce(function (a, b) { return a + b; }, 0);
+    return '<tr data-person="' + (i + 1) + '"><th scope="row"><span>' + swatch(i) + ' Person ' + (i + 1) + '</span></th>' +
+      '<td class="num" data-label="Verteilt (CHF)">' + spent + '</td>' +
+      rCell(H1, q.derived.r.score) + rCell(H2, q.derived.r.subj) + rCell(H3, q.derived.r.like) + '</tr>';
+  }).join('');
+  function meanR(key) {
+    var v = ps.map(function (q) { return q.derived.r[key]; }).filter(function (x) { return x !== null; });
+    return v.length ? mean(v) : null;
+  }
+  rows += '<tr class="me" data-row="mean"><th scope="row">Mittel der r je Person</th><td class="num" data-label="Verteilt (CHF)"></td>' +
+    rCell(H1, meanR('score'), 'mean-score') + rCell(H2, meanR('subj'), 'mean-subj') + rCell(H3, meanR('like'), 'mean-like') + '</tr>';
+  rows += '<tr class="me" data-row="pooled"><th scope="row">Alle Punkte (n = ' + pooled.don.length + ')</th><td class="num" data-label="Verteilt (CHF)"></td>' +
+    rCell(H1, pr.score, 'pooled-score') + rCell(H2, pr.subj, 'pooled-subj') + rCell(H3, pr.like, 'pooled-like') + '</tr>';
+  $('tbl-group-persons').innerHTML = '<thead><tr>' + th('Person') + th('Verteilt (CHF)', 1) + th(H1, 1) + th(H2, 1) + th(H3, 1) + '</tr></thead><tbody>' + rows + '</tbody>';
+
+  setR($('gstat-score'), 'r über alle ' + pooled.don.length + ' Punkte', pr.score);
+  setR($('gstat-subj'), 'r über alle ' + pooled.don.length + ' Punkte', pr.subj);
+  setR($('gstat-like'), 'r über alle ' + pooled.don.length + ' Punkte', pr.like);
+  $('group-legend').innerHTML = ps.map(function (q, i) { return '<li>' + swatch(i) + ' Person ' + (i + 1) + '</li>'; }).join('');
+
+  var prow = PROFILES.map(function (p, k) {
+    var avg = function (f) { return mean(ps.map(f)); };
+    return '<tr><th scope="row">' + esc(p.name) + '</th>' +
+      '<td class="num" data-label="Ø Spende (CHF)">' + fmtNum(avg(function (q) { return q.person.don[k]; }), 1) + '</td>' +
+      '<td class="num" data-label="Ø Sympathie">' + fmtNum(avg(function (q) { return q.person.like[k]; }), 2) + '</td>' +
+      '<td class="num" data-label="Ø subjektive Ähnlichkeit">' + fmtNum(avg(function (q) { return q.person.sim[k]; }), 2) + '</td>' +
+      '<td class="num" data-label="Ø Eigenschaftsähnlichkeit (%)">' + fmtNum(avg(function (q) { return q.derived.score[k]; }), 1) + '</td></tr>';
+  }).join('');
+  $('tbl-group-profiles').innerHTML = '<thead><tr>' + th('Profil') + th('Ø Spende (CHF)', 1) + th('Ø Sympathie', 1) + th('Ø subjektive Ähnlichkeit', 1) + th('Ø Eigenschaftsähnlichkeit (%)', 1) + '</tr></thead><tbody>' + prow + '</tbody>';
+  renderGroupCharts();
+}
+
+/* ================= Ereignisse ================= */
+function onFieldChange(e) {
+  var t = e.target;
+  if (!t || !t.name && !t.id) return;
+  if (t.type === 'range' && t.id.indexOf('don-') === 0) {
+    state.don[t.getAttribute('data-id')] = Number(t.value);
+  } else if (t.type === 'radio') {
+    var m = /^(like|sim|self)-(.+)$/.exec(t.name);
+    if (!m) return;
+    if (m[1] === 'self') {
+      var k = m[2], v = t.value;
+      state.self[k] = (k === 'gender' || k === 'residence') ? v : Number(v);
+    } else {
+      state[m[1]][m[2]] = Number(t.value);
+    }
+  } else { return; }
+  updateUi();
+}
+document.addEventListener('input', onFieldChange);
+document.addEventListener('change', onFieldChange);
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button') : null;
+  if (!b) return;
+  if (b.hasAttribute('data-step')) {
+    var r = $(b.getAttribute('data-for'));
+    var v = Math.max(0, Math.min(BUDGET, Number(r.value) + Number(b.getAttribute('data-step'))));
+    r.value = v;
+    r.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+  if (b.hasAttribute('data-back')) { back(b.getAttribute('data-back')); return; }
+  switch (b.id) {
+    case 'btn-start': go('budget'); break;
+    case 'btn-group-intro': case 'btn-group-results': go('gruppe'); break;
+    case 'btn-to-like': if (!b.disabled) go('like'); break;
+    case 'btn-to-sim': if (!b.disabled) go('sim'); break;
+    case 'btn-to-self': if (!b.disabled) go('self'); break;
+    case 'btn-show-results': if (!b.disabled) go('results'); break;
+    case 'btn-restart':
+      state = freshState(); lastPerson = null; lastDerived = null;
+      buildAll();
+      Array.prototype.forEach.call(document.querySelectorAll('#screen-self input[type="radio"]'), function (r) { r.checked = false; });
+      updateUi(); go('intro'); break;
+    case 'btn-copy': copyCode(); break;
+    case 'btn-group-run': renderGroup(parseGroup($('group-input').value)); break;
+    case 'btn-group-clear':
+      $('group-input').value = ''; $('group-msgs').innerHTML = ''; $('group-result').hidden = true; lastGroup = null;
+      $('group-input').focus(); break;
+  }
+});
+function copyCode() {
+  var txt = $('code-output').textContent, st = $('copy-status');
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    st.textContent = ok ? 'Code kopiert.' : 'Kopieren nicht möglich. Tippe auf den Code, markiere ihn und kopiere ihn von Hand.';
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function () { st.textContent = 'Code kopiert.'; }, fallback);
+  } else { fallback(); }
+}
+window.addEventListener('hashchange', function () {
+  if (location.hash === '#gruppe' && current !== 'gruppe') showScreen('gruppe');
+});
+var resizeTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () {
+    if (current === 'results') renderIndividualCharts();
+    else if (current === 'gruppe') renderGroupCharts();
+  }, 150);
+});
+
+/* ================= Start ================= */
+buildAll();
+updateUi();
+var startHash = (location.hash || '').replace('#', '');
+var startScreen = startHash === 'gruppe' ? 'gruppe' : 'intro';
+try { history.replaceState({ s: startScreen, i: 0 }, '', startScreen === 'gruppe' ? '#gruppe' : location.pathname + location.search); } catch (e) { /* egal */ }
+histIndex = 0;
+showScreen(startScreen);
+})();
+
+
+
+</script>
+</body>
+</html>

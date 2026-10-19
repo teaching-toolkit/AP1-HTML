@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Glücksfaktoren-Spiel</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  /* Projektspezifisches CSS. Farben und Abstände kommen aus ../shared/base.css. */
+  [hidden] { display: none !important; }
+  .spiel { max-width: 760px; margin: 0 auto; padding: 8px 16px 24px; }
+  .kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0 10px; }
+  .kopf h1 { font-size: 1rem; margin: 0; min-width: 0; }
+  @media (max-width: 440px) { .kopf h1 { font-size: .95rem; } .kopf-aktionen .btn { padding: 6px 9px; font-size: .88rem; white-space: nowrap; } }
+  @media (max-width: 340px) { .kopf { flex-wrap: wrap; } }
+  @media (max-width: 380px) { .kopf h1 { font-size: .76rem; } .kopf-aktionen { gap: 4px; } .kopf-aktionen .btn { padding: 6px 7px; font-size: .84rem; } }
+  .kopf-aktionen { display: flex; gap: 6px; }
+  .kopf-aktionen .btn { padding: 6px 11px; min-height: 44px; font-size: .92rem; }
+  .bestaetigung { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+  .bestaetigung p { margin: 0; flex: 1 1 200px; }
+  .ort { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; }
+  .ort .block { font-size: .92rem; color: var(--muted); }
+  .ort .zaehler { font-size: .92rem; font-weight: 600; }
+  .spiel h2.titel { font-size: 1.45rem; margin: 10px 0 12px; line-height: 1.25; }
+  .spiel h2.titel:focus { outline: none; }
+  .spiel h2.titel:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+  .spiel h3 { margin: 18px 0 8px; }
+  .etikett { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 0 0 4px; }
+
+  /* Werte-Kacheln */
+  .kacheln { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 14px; }
+  @media (min-width: 640px) { .kacheln { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .kachel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 6px 10px; text-align: center; min-width: 0; }
+  .kachel .name { font-size: .8rem; color: var(--muted); line-height: 1.2; min-height: 2em; display: flex; align-items: center; justify-content: center; }
+  .kachel .wert { font-size: 1.55rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .kachel .delta { font-size: .85rem; font-weight: 600; min-height: 1.25em; font-variant-numeric: tabular-nums; }
+  .kachel.stimmung { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; text-align: left; padding: 10px 14px; }
+  .kachel.stimmung .name { min-height: 0; justify-content: flex-start; font-size: .9rem; }
+  .kachel.stimmung .wert { font-size: 2.1rem; text-align: right; }
+  .kachel.stimmung .skala-zeile { grid-column: 1 / -1; }
+  .skala { position: relative; height: 8px; background: var(--border); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .skala .fuell { position: absolute; top: 0; bottom: 0; }
+  .skala .fuell.plus { background: var(--good); }
+  .skala .fuell.minus { background: var(--bad); }
+  .skala .mitte { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--fg); opacity: .55; }
+  .plus-text { color: var(--good); }
+  .minus-text { color: var(--bad); }
+  .null-text { color: var(--muted); }
+  .begrenzt { font-size: .75rem; color: var(--warn); }
+
+  /* Vorlesen und Optionen */
+  .vorlesen { font-size: 1.2rem; line-height: 1.65; border-left: 5px solid var(--accent); background: var(--accent-soft); padding: 14px 16px; border-radius: 10px; margin: 0 0 16px; }
+  .optionen { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin: 0 0 8px; }
+  @media (min-width: 720px) { .optionen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .option { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+  .option .kopfzeile { display: flex; gap: 12px; align-items: flex-start; }
+  .buchstabe { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; }
+  .option .name { font-size: 1.15rem; font-weight: 700; line-height: 1.3; padding-top: 6px; }
+  .option .folge { margin: 0; }
+  .option .folge .etikett { margin-top: 4px; }
+  .option .btn { margin-top: auto; }
+  .btn.gross { min-height: 56px; font-size: 1.1rem; width: 100%; }
+  .aktionsleiste { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 78%, transparent); margin-top: 8px; }
+  .aktionsleiste .btn { flex: 1 1 200px; min-height: 52px; font-size: 1.05rem; }
+  .hinweis-beginn { margin: 0 0 14px; }
+
+  /* Wurf */
+  .wuerfeltitel { font-size: 1.25rem; font-weight: 600; line-height: 1.4; margin: 0 0 16px; }
+  .gewaehlt { margin: 0 0 12px; }
+  .gewaehlt .etikett { display: block; }
+  .eingabe-wurf { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+  .eingabe-wurf .feld { flex: 1 1 140px; }
+  .eingabe-wurf input { font-size: 1.3rem; min-height: 52px; text-align: center; }
+  .eingabe-wurf .btn { min-height: 52px; flex: 0 0 auto; }
+  .fehler { color: var(--bad); font-weight: 600; min-height: 1.4em; margin: 6px 0 0; }
+  .trenner { display: flex; align-items: center; gap: 12px; color: var(--muted); margin: 14px 0; font-size: .95rem; }
+  .trenner::before, .trenner::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+
+  /* Ergebnis */
+  .zahlen { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 14px; }
+  @media (min-width: 600px) { .zahlen { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .zahl { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .zahl .name { font-size: .85rem; color: var(--muted); }
+  .zahl .gross { font-size: 2.1rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .zahl .klein { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
+  .zahl.wurf .gross { font-size: 2.8rem; animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.55); opacity: .2; } to { transform: scale(1); opacity: 1; } }
+  .zahl.gut { border-color: var(--good); background: var(--good-soft); }
+  .zahl.schlecht { border-color: var(--bad); background: var(--bad-soft); }
+  .bilanz { margin: 0 0 14px; font-size: 1.05rem; }
+  .balken { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .balken li { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) 4.2em; gap: 8px; align-items: center; }
+  @media (min-width: 560px) { .balken li { grid-template-columns: minmax(0, 11em) minmax(0, 1fr) 4.6em; } }
+  .balken .bname { font-size: .95rem; line-height: 1.2; }
+  .balken .bname small { display: block; color: var(--muted); }
+  .balken .spur { position: relative; height: 18px; background: var(--border); border-radius: 4px; }
+  .balken .spur .mitte { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--fg); opacity: .6; }
+  .balken .spur .fuell { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; }
+  .balken .spur .fuell.plus { background: var(--good); }
+  .balken .spur .fuell.minus { background: var(--bad); }
+  .balken .bwert { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Tabellen */
+  table.werte { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table.werte th, table.werte td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; vertical-align: top; }
+  table.werte th:first-child, table.werte td:first-child { text-align: left; }
+  table.werte thead th { font-size: .8rem; color: var(--muted); font-weight: 600; }
+  table.werte td small { display: block; color: var(--muted); font-size: .82rem; line-height: 1.3; text-align: left; }
+  table.werte td.zweit { text-align: left; }
+  .stimmung-zeile { font-size: 1.3rem; font-weight: 700; margin: 0 0 12px; }
+  .stimmung-zeile .pfeil { color: var(--muted); font-weight: 400; }
+
+  /* Kurztext nach dem Wurf */
+  .kurztext { border-left: 6px solid var(--border); }
+  .kurztext.gut { border-left-color: var(--good); background: var(--good-soft); }
+  .kurztext.schlecht { border-left-color: var(--bad); background: var(--bad-soft); }
+  .kurztext .etikett { color: var(--fg); margin-bottom: 6px; }
+  .kurztext .kt-text { font-size: 1.15rem; line-height: 1.6; margin: 0; }
+
+  /* Glücksfaktoren: Auswahlliste (verdeckt) und freigegebene Lösung */
+  .glueck ul { margin: 6px 0 0; padding-left: 1.2em; }
+  .glueck li { margin: 4px 0; }
+  .glueck .erkenntnis { color: var(--muted); }
+  .glueck ul.kandidaten, .glueck ul.erk { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+  .glueck ul.kandidaten > li { margin: 0; }
+  .kand { appearance: none; font: inherit; color: inherit; cursor: pointer; width: 100%; min-height: 52px; text-align: left; display: flex; gap: 12px; align-items: center;
+    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); touch-action: manipulation; }
+  .kand:hover { border-color: var(--accent); }
+  .kand .haken { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--muted); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; line-height: 1; }
+  .kand.an { border-color: var(--accent); background: var(--accent-soft); }
+  .kand.an .haken { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+  .kand.an .haken::before { content: "\2713"; }
+  .kand-zeile { display: grid; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); }
+  .kand-zeile .urteil { font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  .kand-zeile .markiert { font-size: .82rem; color: var(--muted); }
+  .kand-zeile.echt { border-color: var(--good); border-left-width: 6px; background: var(--good-soft); }
+  .kand-zeile.echt .urteil { color: var(--fg); }
+  .kand-zeile.plausibel, .kand-zeile.unplausibel { border-style: dashed; }
+  .kand-zeile.unplausibel .ktext { color: var(--muted); }
+  .glueck .zaehlung { margin: 12px 0 0; font-weight: 600; }
+  .glueck .erk > li { color: var(--muted); }
+  .glueck .aktion-zeigen { margin-top: 14px; }
+  .glueck .aktion-zeigen .btn { min-height: 52px; width: 100%; font-size: 1.05rem; }
+  .mikro-liste { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
+  @media (min-width: 720px) { .mikro-liste { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .mikro-karte { width: 100%; text-align: left; border-radius: 12px; min-height: 64px; padding: 10px 14px; display: block; }
+  .mikro-karte .mid { font-weight: 700; }
+  .mikro-karte .gruende { display: block; font-size: .85rem; color: var(--muted); margin-top: 2px; }
+  .mikro-karte.vorschlag { border-color: var(--accent); background: var(--accent-soft); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+  .chips .btn { text-align: left; border-radius: 12px; }
+  .vorschlag-box h3 { margin-top: 0; }
+
+  /* Abschluss */
+  .diagramm { width: 100%; margin: 0 0 8px; }
+  .diagramm svg { display: block; width: 100%; height: auto; max-width: 100%; }
+  .diagramm text { fill: var(--muted); font-family: var(--font); }
+  .legende { font-size: .88rem; color: var(--muted); margin: 0 0 12px; }
+  ol.verlauf { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ol.verlauf li { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  ol.verlauf .l1 { font-weight: 700; }
+  ol.verlauf .l2 { margin: 2px 0; }
+  ol.verlauf .l3 { font-size: .92rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  ol.verlauf li.mikro { border-style: dashed; }
+  ol.verlauf .l4 { margin-top: 4px; font-size: .95rem; }
+  .ausr-zahlen { margin: 0 0 10px; font-weight: 600; }
+  .hinweis { margin: 0 0 14px; }
+  noscript p { padding: 16px; }
+</style>
+</head>
+<body>
+<div class="spiel">
+  <header class="kopf">
+    <h1>Glücksfaktoren-Spiel</h1>
+    <div class="kopf-aktionen">
+      <button type="button" class="btn small" id="btn-undo" disabled>Rückgängig</button>
+      <button type="button" class="btn small" id="btn-neu">Neues Spiel</button>
+    </div>
+  </header>
+  <div id="bestaetigung" class="card bestaetigung" hidden>
+    <p>Das laufende Spiel wird verworfen. Wirklich neu starten?</p>
+    <button type="button" class="btn small primary" id="btn-neu-ja">Ja, neu starten</button>
+    <button type="button" class="btn small" id="btn-neu-nein">Abbrechen</button>
+  </div>
+  <main id="app" aria-live="off"></main>
+  <div id="ansage" class="sr-only" role="status" aria-live="polite"></div>
+  <noscript><p>Diese Seite braucht JavaScript.</p></noscript>
+</div>
+
+<script src="spiel-daten.js"></script>
+<script src="spiel-texte.js"></script>
+<script src="spiel-kern.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var D = window.SPIEL_DATEN, T = window.SPIEL_TEXTE, KERN = window.GLUECK_KERN;
+  var app = document.getElementById("app");
+  if (!D || !T || !KERN) {
+    app.textContent = "Die Spieldaten konnten nicht geladen werden. Die Dateien spiel-daten.js, spiel-texte.js und spiel-kern.js müssen neben index.html liegen.";
+    return;
+  }
+
+  /* ---------- URL-Parameter (Testparameter, siehe README) ---------- */
+  var params = new URLSearchParams(location.search);
+  var seed = params.get("seed");
+  var schrankenParam = params.get("schranken");
+  var schranken;
+  if (schrankenParam !== null) schranken = ["1", "ein", "an", "true"].indexOf(schrankenParam.toLowerCase()) >= 0;
+  var abParam = params.get("ab"); /* fest: A bleibt A (alte Zuordnung), tausch: alle vertauscht (Test), sonst zufällig pro Episode */
+  var abModus = abParam === "fest" ? "fest" : (abParam === "tausch" ? "tausch" : "zufall");
+  var kern = KERN.erzeuge(D, { schranken: schranken, texte: T });
+  var wuerfel = KERN.neuerWuerfel(kern.K.wuerfelSeiten, seed);
+  var zufallPlan = KERN.neuerZufall(seed, "plan"); /* A/B-Zuordnung und Reihenfolge der Kandidaten; getrennt vom Würfel */
+  var SPEICHER = "p2-gluecksspiel-v2";
+
+  var ATTR = D.attribute;
+  var MINUS = "−";
+  var ANZAHL_EPISODEN = (function () { var w = kern.alleWege(); return w.length ? w[0].length : 0; })();
+
+  /* ---------- Hilfsfunktionen ---------- */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
+  }
+  function kopie(o) { return JSON.parse(JSON.stringify(o)); }
+  function sauber(n) { return Math.abs(n) < 1e-9 ? 0 : n; }
+  /* Zahl als Text, höchstens "dez" Nachkommastellen, ohne überflüssige Nullen, typografisches Minus. */
+  function zt(n, dez) {
+    if (dez === undefined) dez = 2;
+    n = sauber(n);
+    var s = (Math.round(n * Math.pow(10, dez)) / Math.pow(10, dez)).toFixed(dez);
+    if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    if (s === "-0") s = "0";
+    return s.replace("-", MINUS);
+  }
+  function vz(n, dez) {
+    n = sauber(n);
+    if (n === 0) return "±0";
+    return (n > 0 ? "+" : "") + zt(n, dez);
+  }
+  function klasse(n) { n = sauber(n); return n > 0 ? "plus-text" : (n < 0 ? "minus-text" : "null-text"); }
+  function attr(key) { for (var i = 0; i < ATTR.length; i++) if (ATTR[i].key === key) return ATTR[i]; }
+
+  function skala(wert, min, max, mitte) {
+    var w = Math.max(min, Math.min(max, wert));
+    var pm = (mitte - min) / (max - min) * 100, pw = (w - min) / (max - min) * 100;
+    return '<div class="skala" aria-hidden="true"><span class="fuell ' + (wert >= mitte ? "plus" : "minus") + '" style="left:' +
+      Math.min(pm, pw).toFixed(2) + "%;width:" + Math.abs(pw - pm).toFixed(2) + '%"></span><span class="mitte" style="left:' + pm.toFixed(2) + '%"></span></div>';
+  }
+
+  /* Kacheln für Stimmung und die sechs Attribute. vorher (optional) zeigt die Änderung darunter. */
+  function kacheln(w, vorher, begrenzt) {
+    begrenzt = begrenzt || [];
+    function delta(k) {
+      if (!vorher) return '<div class="delta">&nbsp;</div>';
+      var d = w[k] - vorher[k];
+      return '<div class="delta ' + klasse(d) + '">' + vz(d) + "</div>";
+    }
+    var h = '<div class="kacheln">';
+    h += '<div class="kachel stimmung"><div class="name">Stimmung</div><div class="wert' + (w.stimmung < kern.K.spielendeStimmungUnter ? " minus-text" : "") + '">' + zt(w.stimmung, 1) +
+      (vorher ? ' <span class="' + klasse(w.stimmung - vorher.stimmung) + '" style="font-size:1rem">' + vz(w.stimmung - vorher.stimmung) + "</span>" : "") +
+      '</div><div class="skala-zeile">' + skala(w.stimmung, 0, 100, 50) + "</div></div>";
+    ATTR.forEach(function (a) {
+      h += '<div class="kachel"><div class="name">' + esc(a.name) + '</div><div class="wert">' + zt(w[a.key], 1) + "</div>" + delta(a.key) +
+        (begrenzt.indexOf(a.key) >= 0 ? '<div class="begrenzt">begrenzt</div>' : "") + skala(w[a.key], -10, 10, 0) + "</div>";
+    });
+    return h + "</div>";
+  }
+
+  /* ---------- Zustand ---------- */
+  var S = null;
+  var undoStapel = [];
+  var sperreBis = 0;
+
+  function neuerZustand() {
+    var plan = kern.neuerPlan(zufallPlan, abModus); /* pro Episode: A/B vertauscht? und Reihenfolge der Kandidaten */
+    return {
+      v: 2, phase: "start", ep: null, schritt: 0,
+      werte: kern.startWerte(),
+      tausch: plan.tausch, ordnung: plan.ordnung,
+      beginn: null, wahl: null, wahlAnz: null, wurf: null, wurfArt: null, rech: null, glueckFrei: false, markiert: [],
+      protokoll: [], mikroGespielt: [], mikro: null, mikroModus: null, mikroZiel: null,
+      naechste: null, ende: null
+    };
+  }
+
+  function speichern() {
+    try { sessionStorage.setItem(SPEICHER, JSON.stringify({ S: S, undo: undoStapel })); } catch (e) { /* Speicher optional */ }
+  }
+  function laden() {
+    try {
+      var t = sessionStorage.getItem(SPEICHER);
+      if (!t) return false;
+      var o = JSON.parse(t);
+      if (!o || !o.S || o.S.v !== 2 || !o.S.tausch || !o.S.ordnung || !Array.isArray(o.undo)) return false;
+      if (["start", "entscheidung", "wurf", "ergebnis", "folgen", "werte", "spielende", "mikro-wahl", "mikro-entscheidung", "mikro-folgen", "abschluss"].indexOf(o.S.phase) < 0) return false;
+      S = o.S; undoStapel = o.undo;
+      return true;
+    } catch (e) { return false; }
+  }
+  function schnappschuss() {
+    undoStapel.push(JSON.stringify(S));
+    if (undoStapel.length > 120) undoStapel.shift();
+  }
+  function sperren() { sperreBis = Date.now() + 250; }
+  function gesperrt() { return Date.now() < sperreBis; }
+
+  /* ---------- Spielablauf ---------- */
+  function betreteEpisode(id, trotzdem) { /* trotzdem: Fachperson hat nach «Stimmung unter 0» eine Rettungs-Mikroszene gewählt und führt das Spiel fort */
+    var vorher = kopie(S.werte);
+    S.ep = id; S.schritt += 1;
+    S.werte = kern.beginn(S.werte, id);
+    var b = kern.episode(id).beginn;
+    S.beginn = (b.zeit || b.energie || b.stimmung) ? { zeit: b.zeit, energie: b.energie, stimmung: b.stimmung, vorherStimmung: vorher.stimmung } : null;
+    S.wahl = null; S.wahlAnz = null; S.wurf = null; S.wurfArt = null; S.rech = null; S.glueckFrei = false; S.markiert = [];
+    S.mikro = null; S.mikroModus = null; S.mikroZiel = null; S.naechste = null;
+    S.phase = (S.werte.stimmung < kern.K.spielendeStimmungUnter && !trotzdem) ? "spielende" : "entscheidung";
+  }
+
+  function uebernehmen() { /* Ergebnis der Episode ins Spiel übernehmen (Weiter, Abschluss, Mikroszene) */
+    var r = S.rech;
+    if (!r) return;
+    var ep = kern.episode(S.ep), o = kern.option(S.ep, S.wahl), au = kern.ausrichtung(S.ep, S.wahl);
+    var vorigeStimmung = S.protokoll.filter(function (p) { return p.typ === "ep"; }).slice(-1)[0];
+    S.protokoll.push({
+      typ: "ep", ep: ep.id, block: ep.block, titel: ep.titel, option: S.wahl, optionAnzeige: S.wahlAnz, optionLabel: o.label,
+      ausrichtung: au ? au.wert : null, unscharf: au ? au.unscharf : false,
+      wurf: S.wurf, wurfArt: S.wurfArt, resultat: r.resultat, soll: r.soll, differenz: r.differenz,
+      stimmungsaenderung: r.stimmungsaenderung,
+      stimmungVorher: r.vorher.stimmung, stimmungNachher: r.uebernommen.stimmung,
+      stimmungDavor: vorigeStimmung ? vorigeStimmung.stimmungNachher : kern.K.start.stimmung
+    });
+    S.werte = kopie(r.uebernommen);
+    S.naechste = kern.naechste(S.ep, S.wahl);
+    S.rech = null;
+  }
+
+  var aktionen = {
+    start: function () { schnappschuss(); betreteEpisode(D.episoden[0].id); },
+    waehle: function (anz) { /* anz = angezeigter Buchstabe; gespeichert wird die Regeloption (wahl) und der Buchstabe (wahlAnz) */
+      if (S.phase !== "entscheidung" || (anz !== "A" && anz !== "B")) return;
+      schnappschuss(); S.wahlAnz = anz; S.wahl = kern.anzeigeZuRegel(S.tausch[S.ep], anz); S.phase = "wurf";
+    },
+    wuerfeln: function () { if (S.phase !== "wurf") return; setzeWurf(wuerfel(), "virtuell"); return "bereits"; },
+    zuFolgen: function () { if (S.phase !== "ergebnis") return; schnappschuss(); S.phase = "folgen"; },
+    zuWerten: function () { if (S.phase !== "folgen") return; schnappschuss(); S.phase = "werte"; },
+    markiere: function (pos, el) { /* lokale Markierung zur Besprechung, nur im Speicher dieser Sitzung; ohne neues Rendern */
+      if (S.phase !== "werte" || S.glueckFrei) return "bereits";
+      var i = parseInt(pos, 10);
+      if (!(i >= 0)) return "bereits";
+      var k = S.markiert.indexOf(i);
+      if (k >= 0) S.markiert.splice(k, 1); else S.markiert.push(i);
+      if (el) { el.setAttribute("aria-pressed", k >= 0 ? "false" : "true"); el.classList.toggle("an", k < 0); }
+      speichern();
+      return "bereits";
+    },
+    glueckZeigen: function () { /* Freigabe der Lösung durch die Fachperson; Rückgängig macht sie wieder verdeckt */
+      if (S.phase !== "werte" || S.glueckFrei) return "bereits";
+      schnappschuss(); S.glueckFrei = true;
+      sperren(); speichern(); render(false);
+      var h = document.getElementById("glueck-titel");
+      if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+      document.getElementById("ansage").textContent = "Lösung gezeigt.";
+      return "bereits";
+    },
+    weiter: function () {
+      if (S.phase !== "werte" || S.rech.spielende) return;
+      schnappschuss(); uebernehmen();
+      if (S.naechste === null) { S.ende = "regulaer"; S.phase = "abschluss"; } else betreteEpisode(S.naechste);
+    },
+    abschluss: function () {
+      if (S.phase === "werte") { schnappschuss(); uebernehmen(); S.ende = S.werte.stimmung < kern.K.spielendeStimmungUnter ? "stimmung" : "regulaer"; S.phase = "abschluss"; }
+      else if (S.phase === "spielende") { schnappschuss(); S.ende = "stimmung"; S.phase = "abschluss"; }
+    },
+    mikroOeffnen: function (modus) { /* modus: normal | rettung */
+      if (S.phase === "werte") { schnappschuss(); uebernehmen(); S.mikroZiel = "naechste"; }
+      else if (S.phase === "spielende") { schnappschuss(); S.mikroZiel = "aktuelle"; }
+      else if (S.phase === "mikro-folgen") { schnappschuss(); }
+      else return;
+      S.mikroModus = modus === "rettung" ? "rettung" : "normal";
+      S.mikro = null; S.phase = "mikro-wahl";
+    },
+    mikroStart: function (id) { /* aus der Liste oder direkt per Vorschlagsknopf */
+      if (!kern.mikro(id) || S.mikroGespielt.some(function (g) { return g.id === id; })) return;
+      if (S.phase === "werte") { schnappschuss(); uebernehmen(); S.mikroZiel = "naechste"; S.mikroModus = "normal"; }
+      else if (S.phase === "mikro-wahl") { schnappschuss(); }
+      else return;
+      S.mikro = { id: id, wahl: null, ergebnis: null }; S.phase = "mikro-entscheidung";
+    },
+    mikroWahl: function (opt) {
+      if (S.phase !== "mikro-entscheidung" || (opt !== "A" && opt !== "B")) return;
+      schnappschuss();
+      var erg = kern.mikroAnwenden(S.werte, S.mikro.id, opt);
+      S.mikro.wahl = opt; S.mikro.ergebnis = erg;
+      var m = kern.mikro(S.mikro.id);
+      S.werte = kopie(erg.uebernommen);
+      S.mikroGespielt.push({ id: m.id, titel: m.titel, option: opt, optionLabel: m.optionen[opt].label });
+      S.protokoll.push({ typ: "mikro", id: m.id, titel: m.titel, option: opt, optionLabel: m.optionen[opt].label, deltas: kopie(erg.deltas), modus: S.mikroModus });
+      S.phase = "mikro-folgen";
+    },
+    mikroWeiter: function () {
+      if (S.phase !== "mikro-folgen") return;
+      schnappschuss();
+      var ziel = S.mikroZiel, nxt = S.naechste, rettung = S.mikroModus === "rettung";
+      S.mikro = null; S.mikroModus = null; S.mikroZiel = null;
+      if (ziel === "aktuelle") { S.phase = "entscheidung"; }
+      else if (nxt === null) { S.ende = "regulaer"; S.phase = "abschluss"; }
+      else betreteEpisode(nxt, rettung);
+    },
+    undo: function () { rueckgaengig(); return "bereits"; }
+  };
+
+  function setzeWurf(n, art) {
+    schnappschuss();
+    S.wurf = n; S.wurfArt = art;
+    S.rech = kern.rechne(S.ep, S.wahl, S.werte, n);
+    S.phase = "ergebnis";
+    nachAktion(true);
+  }
+
+  function rueckgaengig() {
+    if (!undoStapel.length) return;
+    S = JSON.parse(undoStapel.pop());
+    nachAktion(true);
+  }
+
+  function nachAktion(neuePhase) {
+    sperren();
+    speichern();
+    render(neuePhase);
+  }
+
+  /* ---------- Darstellung ---------- */
+  var PHASEN_TITEL = {
+    start: "Start", entscheidung: "Entscheidung", wurf: "Würfeln", ergebnis: "Ergebnis", folgen: "Veränderungen",
+    werte: "Werte danach", spielende: "Stimmung unter 0", "mikro-wahl": "Mikroszene wählen",
+    "mikro-entscheidung": "Mikroszene", "mikro-folgen": "Mikroszene: Folgen", abschluss: "Abschluss"
+  };
+
+  function ortZeile() {
+    var ep = kern.episode(S.ep);
+    return '<div class="ort"><span class="block">Block ' + ep.block + " · " + esc(D.blockNamen[String(ep.block)]) + '</span><span class="zaehler">Episode ' + S.schritt + " von " + ANZAHL_EPISODEN + "</span></div>" +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + ANZAHL_EPISODEN + '" aria-valuenow="' + S.schritt + '" aria-label="Fortschritt"><span style="width:' + (S.schritt / ANZAHL_EPISODEN * 100).toFixed(1) + '%"></span></div>';
+  }
+
+  /* Mikroszenen: Glücksfaktoren wie bisher direkt gezeigt (nur Episoden haben die verdeckte Auswahlliste). */
+  function glueckBox(liste, erkenntnis) {
+    if (!liste.length && !erkenntnis.length) return "";
+    var h = '<section class="card glueck" aria-labelledby="glueck-titel"><h3 id="glueck-titel" style="margin-top:0">Glücksfaktoren</h3><ul>';
+    liste.forEach(function (t) { h += "<li>" + esc(t) + "</li>"; });
+    erkenntnis.forEach(function (t) { h += '<li class="erkenntnis">' + esc(t) + "</li>"; });
+    return h + "</ul></section>";
+  }
+
+  /* Episoden: zuerst verdeckte Auswahlliste (echte Faktoren und Ablenker gemischt, ohne Markierung im DOM),
+     nach der Freigabe durch die Fachperson die Lösung. */
+  function glueckAuswahl(ep) {
+    var kand = kern.kandidaten(ep.id), reihe = S.ordnung[ep.id], tausch = S.tausch[ep.id];
+    var frei = S.glueckFrei, urteil = T.urteilTexte;
+    var h = '<section class="card glueck" aria-labelledby="glueck-titel"><h3 id="glueck-titel" tabindex="-1" style="margin-top:0">' +
+      (frei ? "Glücksfaktoren dieser Episode" : "Mögliche Glücksfaktoren") + "</h3>";
+    if (!frei) h += '<p class="hint">Welche davon haben in dieser Episode eine Rolle gespielt? Besprecht es in der Gruppe. Mit Antippen markiert ihr Einträge für die Besprechung (die Markierung bleibt nur auf diesem Gerät). Die Fachperson zeigt danach die Lösung.</p>';
+    h += '<ul class="kandidaten">';
+    var richtig = 0;
+    reihe.forEach(function (idx, pos) {
+      var k = kand[idx], mark = S.markiert.indexOf(pos) >= 0;
+      if (!frei) {
+        h += '<li><button type="button" class="kand' + (mark ? " an" : "") + '" aria-pressed="' + (mark ? "true" : "false") + '" data-aktion="markiere" data-wert="' + pos + '"><span class="haken" aria-hidden="true"></span><span class="ktext">' + esc(k.name) + "</span></button></li>";
+      } else {
+        if (mark && k.art === "echt") richtig += 1;
+        h += '<li class="kand-zeile ' + k.art + '"><span class="urteil">' + esc(urteil[k.art]) + '</span><span class="ktext">' +
+          esc(k.art === "echt" ? KERN.optionenImText(k.voll, tausch) : k.name) + "</span>" + (mark ? '<span class="markiert">markiert</span>' : "") + "</li>";
+      }
+    });
+    h += "</ul>";
+    if (!frei) {
+      h += '<div class="aktion-zeigen"><button type="button" class="btn primary" data-aktion="glueckZeigen">Lösung zeigen</button></div>';
+    } else {
+      if (S.markiert.length) h += '<p class="zaehlung">Von ' + S.markiert.length + " markierten Einträgen gehören " + richtig + " zur Lösung.</p>";
+      if (ep.erkenntnis.length) {
+        h += '<ul class="erk">';
+        ep.erkenntnis.forEach(function (t) { h += '<li class="erkenntnis">' + esc(t) + "</li>"; });
+        h += "</ul>";
+      }
+      h += '<p class="hint" style="margin-top:12px">«' + esc(urteil.plausibel) + "» heisst: gehört nicht zur Lösung dieser Episode im Spiel. Es sagt nichts über Glück im Allgemeinen.</p>";
+    }
+    return h + "</section>";
+  }
+
+  function viewStart() {
+    return '<h2 class="titel" id="titel" tabindex="-1">Alexandras Entscheidungen</h2>' +
+      '<p class="vorlesen" style="font-size:1.1rem">Die Gruppe entscheidet gemeinsam für Alexandra, eine Studentin. Nach jeder Entscheidung wird gewürfelt.</p>' +
+      '<h3>Startwerte</h3>' + kacheln(S.werte) +
+      '<div class="aktionsleiste"><button type="button" class="btn primary gross" data-aktion="start">Spiel starten</button></div>';
+  }
+
+  function viewEntscheidung() {
+    var ep = kern.episode(S.ep);
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">' + esc(ep.titel) + "</h2>";
+    if (S.beginn) {
+      var teile = [];
+      if (S.beginn.zeit) teile.push("Zeit " + vz(S.beginn.zeit));
+      if (S.beginn.energie) teile.push("Energie " + vz(S.beginn.energie));
+      if (S.beginn.stimmung) teile.push("Stimmung " + vz(S.beginn.stimmung));
+      h += '<p class="notice hinweis-beginn"><strong>Zu Beginn dieser Episode:</strong> ' + teile.join(", ") + "</p>";
+    }
+    h += kacheln(S.werte);
+    h += '<p class="etikett">Vorlesen</p><p class="vorlesen">' + esc(ep.vorlesen) + "</p>";
+    h += '<div class="optionen">';
+    ["A", "B"].forEach(function (k) { /* k = angezeigter Buchstabe; die Regeloption dahinter kann vertauscht sein */
+      var o = ep.optionen[kern.anzeigeZuRegel(S.tausch[S.ep], k)];
+      h += '<section class="card option" aria-label="Option ' + k + '"><div class="kopfzeile"><span class="buchstabe" aria-hidden="true">' + k + '</span><span class="name">' + esc(o.label) + "</span></div>" +
+        '<p class="folge"><span class="etikett" style="display:block">Unmittelbare Folge</span>' + esc(o.folge) + "</p>" +
+        '<button type="button" class="btn primary gross" data-aktion="waehle" data-wert="' + k + '">Option ' + k + " wählen</button></section>";
+    });
+    return h + "</div>";
+  }
+
+  function viewWurf() {
+    var o = kern.option(S.ep, S.wahl);
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">Würfeln</h2>';
+    h += '<p class="gewaehlt"><span class="etikett">Gewählt</span><strong>' + S.wahlAnz + " · " + esc(o.label) + "</strong></p>";
+    h += '<p class="etikett">Würfeln auf</p><p class="wuerfeltitel">' + esc(o.wuerfeltitel) + "</p>";
+    h += '<button type="button" class="btn primary gross" data-aktion="wuerfeln">Würfeln (virtueller W' + kern.K.wuerfelSeiten + ")</button>";
+    h += '<div class="trenner">oder</div>';
+    h += '<form class="eingabe-wurf" id="form-wurf" novalidate><div class="feld"><label for="wurf-eingabe">Wurf mit eigenem Würfel (1–' + kern.K.wuerfelSeiten + ')</label>' +
+      '<input type="text" id="wurf-eingabe" inputmode="numeric" autocomplete="off" maxlength="2" aria-describedby="wurf-fehler"></div>' +
+      '<button type="submit" class="btn gross" style="width:auto">Wurf übernehmen</button></form>' +
+      '<p class="fehler" id="wurf-fehler" role="alert"></p>';
+    return h;
+  }
+
+  function viewErgebnis() {
+    var r = S.rech, o = kern.option(S.ep, S.wahl);
+    var gut = r.differenz >= 0;
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">Ergebnis</h2>';
+    h += '<p class="gewaehlt"><span class="etikett">Gewählt</span><strong>' + S.wahlAnz + " · " + esc(o.label) + "</strong></p>";
+    h += '<div class="zahlen">' +
+      '<div class="zahl wurf"><div class="name">Wurf</div><div class="gross" id="z-wurf">' + r.wurf + '</div><div class="klein">' + (S.wurfArt === "physisch" ? "eigener Würfel" : "virtuell") + "</div></div>" +
+      '<div class="zahl"><div class="name">Boost aus Attributen</div><div class="gross ' + klasse(r.boost) + '" id="z-boost">' + vz(r.boost) + '</div><div class="klein">&nbsp;</div></div>' +
+      '<div class="zahl ' + (gut ? "gut" : "schlecht") + '"><div class="name">Ergebnis</div><div class="gross" id="z-ergebnis">' + zt(r.resultat, 1) + '</div><div class="klein">' +
+      (r.resultatAufNullGesetzt ? "unter 0, auf 0 gesetzt" : "Wurf + Boost, auf 0.1 gerundet") + "</div></div>" +
+      '<div class="zahl"><div class="name">Soll-Wert</div><div class="gross" id="z-soll">' + r.soll + '</div><div class="klein">&nbsp;</div></div></div>';
+    h += '<p class="bilanz">Ergebnis ' + zt(r.resultat, 1) + " gegenüber Soll-Wert " + r.soll + ": <strong class=\"" + klasse(r.differenz) + "\" id=\"z-diff\">" + vz(r.differenz, 1) + "</strong></p>";
+    var kt = kern.ergebnisText(S.ep, S.wahl, r); /* Kurztext zu Erfolg oder Misserfolg, passend zu den tatsächlichen Änderungen */
+    if (kt) {
+      h += '<section class="card kurztext ' + (kt.art === "erfolg" ? "gut" : "schlecht") + '" aria-labelledby="kt-titel"><p class="etikett" id="kt-titel">' +
+        (kt.art === "erfolg" ? "Erfolg" : "Misserfolg") + '</p><p class="kt-text" id="kt-text">' + esc(kt.text) + "</p></section>";
+    }
+    var maxAbs = 1;
+    ATTR.forEach(function (a) { maxAbs = Math.max(maxAbs, Math.abs(r.wirkung[a.key])); });
+    h += '<h3>Wirkung der Attribute auf das Ergebnis</h3><ul class="balken">';
+    ATTR.forEach(function (a) {
+      var v = r.wirkung[a.key], breite = Math.abs(v) / maxAbs * 50;
+      h += '<li><span class="bname">' + esc(a.langname) + "<small>Wert " + zt(r.vorher[a.key], 1) + '</small></span><span class="spur" aria-hidden="true"><span class="mitte"></span>' +
+        '<span class="fuell ' + (v >= 0 ? "plus" : "minus") + '" style="' + (v >= 0 ? "left:50%" : "right:50%") + ";width:" + breite.toFixed(2) + '%"></span></span>' +
+        '<span class="bwert ' + klasse(v) + '" data-attr="' + a.key + '">' + vz(v) + "</span></li>";
+    });
+    h += "</ul>";
+    h += '<div class="aktionsleiste"><button type="button" class="btn primary" data-aktion="zuFolgen">Weiter zu den Veränderungen</button></div>';
+    return h;
+  }
+
+  function viewFolgen() {
+    var r = S.rech;
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">Veränderungen</h2>';
+    h += '<p class="stimmung-zeile">Stimmung ' + zt(r.vorher.stimmung, 1) + ' <span class="pfeil">→</span> <span class="' + (r.stimmungNachher < kern.K.spielendeStimmungUnter ? "minus-text" : "") + '" id="f-stimmung">' + zt(r.stimmungNachher, 1) +
+      '</span> <span class="' + klasse(r.stimmungsaenderung) + '" style="font-size:1rem" id="f-dstimmung">(' + vz(r.stimmungsaenderung) + ")</span></p>";
+    if (r.spielende) h += '<p class="notice warn"><strong>Die Stimmung liegt unter ' + kern.K.spielendeStimmungUnter + ".</strong></p>";
+    h += '<table class="werte"><thead><tr><th scope="col">Attribut</th><th scope="col">Vorher</th><th scope="col">Änderung</th><th scope="col">Nachher</th></tr></thead><tbody>';
+    ATTR.forEach(function (a) {
+      var k = a.key, notiz = "";
+      if (k === "zeit" && r.zeitAbzug) notiz = "<small>enthält " + MINUS + r.zeitAbzug + " wegen Finanzen unter " + zt(kern.K.zeitAbzugFinanzen.finanzenUnter, 0) + "</small>";
+      if (k === "energie") notiz = "<small>Basis " + vz(r.energieBasis) + ", Einfluss der Stimmung " + vz(r.energieAusStimmung) + "</small>";
+      h += "<tr><td>" + esc(a.langname) + notiz + '</td><td>' + zt(r.vorher[k], 1) + '</td><td class="' + klasse(r.aenderung[k]) + '" data-aenderung="' + k + '">' + vz(r.aenderung[k]) + '</td><td><strong data-nachher="' + k + '">' + zt(r.nachher[k], 1) + "</strong></td></tr>";
+    });
+    h += "</tbody></table>";
+    h += '<div class="aktionsleiste"><button type="button" class="btn primary" data-aktion="zuWerten">Werte danach anzeigen</button></div>';
+    return h;
+  }
+
+  function vorschlagHtml(werte) {
+    var v = kern.mikroVorschlag(werte);
+    var verfuegbar = v.ids.filter(function (id) { return !S.mikroGespielt.some(function (g) { return g.id === id; }); });
+    if (!verfuegbar.length) return "";
+    var h = '<section class="card vorschlag-box" aria-labelledby="vorschlag-titel"><h3 id="vorschlag-titel">Vorschlag: Mikroszene</h3><p class="hint">' + esc(vorschlagGrund(werte)) + '</p><div class="chips">';
+    verfuegbar.forEach(function (id) {
+      var m = kern.mikro(id);
+      h += '<button type="button" class="btn" data-aktion="mikroStart" data-wert="' + id + '">' + id + " · " + esc(m.titel) + "</button>";
+    });
+    return h + "</div></section>";
+  }
+  function grundText(g) {
+    return { zeit: "Zeit unter " + zt(kern.K.mikroVorschlag.zeitEnergieUnter, 0), energie: "Energie unter " + zt(kern.K.mikroVorschlag.zeitEnergieUnter, 0),
+      soz: "Soziale Verbindungen unter " + zt(kern.K.mikroVorschlag.attributUnter, 0), erfuellung: "Persönliche Erfüllung unter " + zt(kern.K.mikroVorschlag.attributUnter, 0),
+      lebensstil: "Lebensstil-Qualität unter " + zt(kern.K.mikroVorschlag.attributUnter, 0) }[g];
+  }
+  function vorschlagGrund(werte) {
+    var v = kern.mikroVorschlag(werte), gruende = [];
+    v.ids.forEach(function (id) { v.gruende[id].forEach(function (g) { if (gruende.indexOf(g) < 0) gruende.push(g); }); });
+    return gruende.map(grundText).join(", ");
+  }
+
+  function viewWerte() {
+    var r = S.rech, ep = kern.episode(S.ep);
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">Werte danach</h2>';
+    h += kacheln(r.uebernommen, r.vorher, r.begrenzt);
+    h += glueckAuswahl(ep);
+    if (r.spielende) {
+      h += '<section class="card" aria-labelledby="ende-titel"><h3 id="ende-titel" style="margin-top:0">Stimmung unter ' + kern.K.spielendeStimmungUnter + "</h3>" +
+        "<p>Das Spiel endet hier, oder es wird mit einer Rettungs-Mikroszene weitergeführt.</p></section>";
+      h += '<div class="aktionsleiste"><button type="button" class="btn primary" data-aktion="abschluss">Zur Abschlussansicht</button>';
+      if (kern.naechste(S.ep, S.wahl) !== null) h += '<button type="button" class="btn" data-aktion="mikroOeffnen" data-wert="rettung">Rettungs-Mikroszene einschieben</button>';
+      return h + "</div>";
+    }
+    var letzte = kern.naechste(S.ep, S.wahl) === null;
+    if (!letzte) h += vorschlagHtml(r.uebernommen);
+    h += '<div class="aktionsleiste">';
+    if (letzte) {
+      h += '<button type="button" class="btn primary" data-aktion="abschluss">Zur Abschlussansicht</button>';
+    } else {
+      h += '<button type="button" class="btn primary" data-aktion="weiter">Weiter zur nächsten Episode</button>' +
+        '<button type="button" class="btn" data-aktion="mikroOeffnen" data-wert="normal">Mikroszene einschieben</button>';
+    }
+    return h + "</div>";
+  }
+
+  function viewSpielende() {
+    var ep = kern.episode(S.ep);
+    var h = ortZeile() + '<h2 class="titel" id="titel" tabindex="-1">Stimmung unter ' + kern.K.spielendeStimmungUnter + "</h2>";
+    h += '<p class="notice warn">Die Stimmung liegt zu Beginn der Episode «' + esc(ep.titel) + "» unter " + kern.K.spielendeStimmungUnter + ". Das Spiel endet hier, oder es wird mit einer Rettungs-Mikroszene weitergeführt.</p>";
+    h += kacheln(S.werte);
+    h += '<div class="aktionsleiste"><button type="button" class="btn primary" data-aktion="abschluss">Zur Abschlussansicht</button>' +
+      '<button type="button" class="btn" data-aktion="mikroOeffnen" data-wert="rettung">Rettungs-Mikroszene einschieben</button></div>';
+    return h;
+  }
+
+  function viewMikroWahl() {
+    var rettung = S.mikroModus === "rettung";
+    var vorschlag = rettung ? { ids: kern.rettungsszenen(), gruende: {} } : kern.mikroVorschlag(S.werte);
+    var h = '<h2 class="titel" id="titel" tabindex="-1">' + (rettung ? "Rettungs-Mikroszene" : "Mikroszene einschieben") + "</h2>";
+    h += kacheln(S.werte);
+    h += '<ul class="mikro-liste">';
+    var ids = D.mikroszenen.map(function (m) { return m.id; });
+    ids.sort(function (a, b) {
+      var va = vorschlag.ids.indexOf(a) >= 0 ? 0 : 1, vb = vorschlag.ids.indexOf(b) >= 0 ? 0 : 1;
+      return va - vb || parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
+    });
+    ids.forEach(function (id) {
+      var m = kern.mikro(id), gespielt = S.mikroGespielt.some(function (g) { return g.id === id; });
+      var istVorschlag = vorschlag.ids.indexOf(id) >= 0;
+      var grund = "";
+      if (gespielt) grund = "bereits gespielt";
+      else if (istVorschlag && rettung) grund = "Vorschlag: Regeneration";
+      else if (istVorschlag) grund = "Vorschlag: " + (vorschlag.gruende[id] || []).map(grundText).join(", ");
+      h += '<li><button type="button" class="btn mikro-karte' + (istVorschlag && !gespielt ? " vorschlag" : "") + '" data-aktion="mikroStart" data-wert="' + id + '"' + (gespielt ? " disabled" : "") + '><span class="mid">' + id + "</span> · " + esc(m.titel) +
+        (grund ? '<span class="gruende">' + esc(grund) + "</span>" : "") + "</button></li>";
+    });
+    h += "</ul>";
+    return h;
+  }
+
+  function viewMikroEntscheidung() {
+    var m = kern.mikro(S.mikro.id);
+    var h = '<h2 class="titel" id="titel" tabindex="-1">' + esc(m.id) + " · " + esc(m.titel) + "</h2>";
+    h += kacheln(S.werte);
+    h += '<p class="etikett">Vorlesen</p><p class="vorlesen">' + esc(m.vorlesen) + "</p>";
+    h += '<div class="optionen">';
+    ["A", "B"].forEach(function (k) {
+      h += '<section class="card option" aria-label="Option ' + k + '"><div class="kopfzeile"><span class="buchstabe" aria-hidden="true">' + k + '</span><span class="name">' + esc(m.optionen[k].label) + "</span></div>" +
+        '<button type="button" class="btn primary gross" data-aktion="mikroWahl" data-wert="' + k + '">Option ' + k + " wählen</button></section>";
+    });
+    return h + "</div>";
+  }
+
+  function viewMikroFolgen() {
+    var m = kern.mikro(S.mikro.id), e = S.mikro.ergebnis, o = m.optionen[S.mikro.wahl];
+    var h = '<h2 class="titel" id="titel" tabindex="-1">' + esc(m.id) + " · " + esc(m.titel) + "</h2>";
+    h += '<p class="gewaehlt"><span class="etikett">Gewählt</span><strong>' + S.mikro.wahl + " · " + esc(o.label) + "</strong></p>";
+    h += '<h3>Veränderungen</h3><table class="werte"><thead><tr><th scope="col">Attribut</th><th scope="col">Vorher</th><th scope="col">Änderung</th><th scope="col">Nachher</th></tr></thead><tbody>';
+    ATTR.forEach(function (a) {
+      var d = e.deltas[a.key] || 0;
+      h += "<tr><td>" + esc(a.langname) + "</td><td>" + zt(e.vorher[a.key], 1) + '</td><td class="' + klasse(d) + '" data-aenderung="' + a.key + '">' + vz(d) + '</td><td><strong data-nachher="' + a.key + '">' + zt(e.uebernommen[a.key], 1) + "</strong></td></tr>";
+    });
+    h += "</tbody></table>";
+    h += "<h3>Werte danach</h3>" + kacheln(S.werte, e.vorher);
+    h += glueckBox(m.glueck, []);
+    var rest = D.mikroszenen.filter(function (x) { return !S.mikroGespielt.some(function (g) { return g.id === x.id; }); }).length;
+    h += '<div class="aktionsleiste"><button type="button" class="btn primary" data-aktion="mikroWeiter">' + (S.mikroZiel === "aktuelle" ? "Weiter mit der Episode" : "Weiter zur nächsten geplanten Szene") + "</button>";
+    if (rest) h += '<button type="button" class="btn" data-aktion="mikroOeffnen" data-wert="' + (S.mikroModus || "normal") + '">Weitere Mikroszene</button>';
+    return h + "</div>";
+  }
+
+  /* ---- Abschluss: Diagramm der Stimmung (SVG ohne Bibliothek) ---- */
+  function diagramm() {
+    var eps = S.protokoll.filter(function (p) { return p.typ === "ep"; });
+    var pts = [{ x: 0, y: kern.K.start.stimmung, art: "start" }];
+    eps.forEach(function (p, i) {
+      if (p.stimmungVorher !== p.stimmungDavor) pts.push({ x: i + 0.5, y: p.stimmungVorher, art: "ereignis" });
+      pts.push({ x: i + 1, y: p.stimmungNachher, art: "episode", nr: i + 1 });
+    });
+    var n = Math.max(1, eps.length);
+    if (S.ende === "stimmung" && S.protokoll.length && eps.length < S.schritt) { /* Spielende zu Beginn einer Episode */
+      var letzteY = pts[pts.length - 1].y;
+      if (S.werte.stimmung !== letzteY) pts.push({ x: eps.length + 0.5, y: S.werte.stimmung, art: "ereignis" });
+    } else if (S.ende === "stimmung" && !eps.length && S.werte.stimmung !== pts[0].y) {
+      pts.push({ x: 0.5, y: S.werte.stimmung, art: "ereignis" });
+    }
+    var breite = Math.max(300, Math.min(720, (app.clientWidth || 360)));
+    var hoehe = breite < 480 ? 230 : 280;
+    var pl = 38, pr = 12, po = 14, pu = 30;
+    var ys = pts.map(function (p) { return p.y; });
+    var yMin = Math.min(0, Math.floor(Math.min.apply(null, ys) / 25) * 25), yMax = Math.max(100, Math.ceil(Math.max.apply(null, ys) / 25) * 25);
+    var xmax = Math.max(n, pts[pts.length - 1].x);
+    function X(x) { return pl + x / xmax * (breite - pl - pr); }
+    function Y(y) { return po + (yMax - y) / (yMax - yMin) * (hoehe - po - pu); }
+    var s = '<svg role="img" aria-labelledby="dia-t dia-d" viewBox="0 0 ' + breite + " " + hoehe + '" width="' + breite + '" height="' + hoehe + '" xmlns="http://www.w3.org/2000/svg">';
+    s += '<title id="dia-t">Verlauf der Stimmung</title><desc id="dia-d">Stimmung zu Beginn des Spiels und nach jeder Episode: ' +
+      pts.filter(function (p) { return p.art !== "ereignis"; }).map(function (p) { return zt(p.y, 1); }).join(", ") + ".</desc>";
+    for (var g = yMin; g <= yMax; g += 25) {
+      s += '<line x1="' + pl + '" x2="' + (breite - pr) + '" y1="' + Y(g).toFixed(1) + '" y2="' + Y(g).toFixed(1) + '" stroke="' + (g === 0 && yMin < 0 ? "var(--bad)" : "var(--border)") + '" stroke-width="1"' + (g === 50 ? ' stroke-dasharray="4 4"' : "") + "/>";
+      s += '<text x="' + (pl - 6) + '" y="' + (Y(g) + 4).toFixed(1) + '" text-anchor="end" font-size="12">' + zt(g, 0) + "</text>";
+    }
+    if (yMin < 0) s += '<line x1="' + pl + '" x2="' + (breite - pr) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="var(--bad)" stroke-width="1.5"/>';
+    var schritt = Math.ceil(n / Math.max(1, Math.floor((breite - pl - pr) / 26)));
+    for (var i = 0; i <= n; i += schritt) {
+      s += '<text x="' + X(i).toFixed(1) + '" y="' + (hoehe - 10) + '" text-anchor="middle" font-size="12">' + i + "</text>";
+    }
+    s += '<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points="' + pts.map(function (p) { return X(p.x).toFixed(1) + "," + Y(p.y).toFixed(1); }).join(" ") + '"/>';
+    var mitWerten = (breite - pl - pr) / n >= 40;
+    pts.forEach(function (p) {
+      var neg = p.y < kern.K.spielendeStimmungUnter;
+      if (p.art === "ereignis") {
+        s += '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="5" fill="var(--bg)" stroke="' + (neg ? "var(--bad)" : "var(--accent)") + '" stroke-width="2"/>';
+      } else {
+        s += '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4.5" fill="' + (neg ? "var(--bad)" : "var(--accent)") + '"/>';
+        if (mitWerten) s += '<text x="' + (X(p.x) + (X(p.x) > breite - pr - 16 ? 4 : 0)).toFixed(1) + '" y="' + (Y(p.y) - 9).toFixed(1) + '" text-anchor="' + (X(p.x) > breite - pr - 16 ? "end" : "middle") + '" font-size="12" style="fill:var(--fg);stroke:var(--bg);stroke-width:3px;paint-order:stroke">' + zt(p.y, 1) + "</text>";
+      }
+    });
+    s += "</svg>";
+    return s;
+  }
+
+  function viewAbschluss() {
+    var h = '<h2 class="titel" id="titel" tabindex="-1">Abschluss</h2>';
+    if (S.ende === "stimmung") h += '<p class="notice warn hinweis">Das Spiel wurde beendet, weil die Stimmung unter ' + kern.K.spielendeStimmungUnter + " fiel.</p>";
+    h += "<h3>Verlauf der Stimmung</h3>" + '<div class="diagramm" id="diagramm">' + diagramm() + "</div>";
+    h += '<p class="legende">Horizontal: 0 = Start, danach Episode 1 bis ' + ANZAHL_EPISODEN + ". Gestrichelt: Stimmung 50. Ring: Stimmung zu Beginn einer Episode, wenn das Ereignis sie verändert hat.</p>";
+    h += "<h3>Gewählte Optionen</h3>";
+    var zaehl = { langfristig: 0, kurzfristig: 0 }, ausrNamen = T.ausrichtungNamen, hatUnscharf = false;
+    S.protokoll.forEach(function (p) {
+      if (p.typ === "ep" && p.ausrichtung) { zaehl[p.ausrichtung] += 1; if (p.unscharf) hatUnscharf = true; }
+    });
+    h += '<p class="ausr-zahlen" id="ausr-zahlen">Gewählte Ausrichtung: ' + zaehl.langfristig + " × " + esc(ausrNamen.langfristig) + ", " + zaehl.kurzfristig + " × " + esc(ausrNamen.kurzfristig) + ".</p>";
+    h += '<p class="hint">Während des Spiels war die Ausrichtung nicht sichtbar' + (abModus === "zufall" ? ", und die Buchstaben A und B waren pro Episode zufällig verteilt" : "") + "." +
+      (hatUnscharf ? " * Bei dieser Episode ist die Einordnung nicht eindeutig." : "") + "</p>";
+    h += '<ol class="verlauf">';
+    var nr = 0;
+    S.protokoll.forEach(function (p) {
+      if (p.typ === "ep") {
+        nr += 1;
+        h += '<li><div class="l1">' + nr + " · " + esc(p.titel) + '</div><div class="l2"><strong>Option ' + p.optionAnzeige + "</strong> · " + esc(p.optionLabel) + '</div><div class="l3">Wurf ' + p.wurf + " · Ergebnis " + zt(p.resultat, 1) + " (Soll " + p.soll + ") · Stimmung " + zt(p.stimmungVorher, 1) + " → " + zt(p.stimmungNachher, 1) + "</div>" +
+          (p.ausrichtung ? '<div class="l4">Ausrichtung: <strong data-ausrichtung="' + p.ausrichtung + '">' + esc(ausrNamen[p.ausrichtung]) + "</strong>" + (p.unscharf ? " *" : "") + "</div>" : "") + "</li>";
+      } else {
+        h += '<li class="mikro"><div class="l1">Mikroszene ' + esc(p.id) + " · " + esc(p.titel) + '</div><div class="l2"><strong>' + p.option + "</strong> · " + esc(p.optionLabel) + "</div></li>";
+      }
+    });
+    h += "</ol>";
+    h += "<h3>Endwerte</h3>" + kacheln(S.werte);
+    h += '<div class="aktionsleiste"><button type="button" class="btn primary" id="btn-neu-abschluss">Neues Spiel</button></div>';
+    return h;
+  }
+
+  var VIEWS = {
+    start: viewStart, entscheidung: viewEntscheidung, wurf: viewWurf, ergebnis: viewErgebnis, folgen: viewFolgen, werte: viewWerte,
+    spielende: viewSpielende, "mikro-wahl": viewMikroWahl, "mikro-entscheidung": viewMikroEntscheidung, "mikro-folgen": viewMikroFolgen, abschluss: viewAbschluss
+  };
+
+  function render(neuePhase) {
+    app.innerHTML = VIEWS[S.phase]();
+    document.getElementById("btn-undo").disabled = undoStapel.length === 0;
+    var el = document.getElementById("titel");
+    if (neuePhase) {
+      window.scrollTo(0, 0);
+      if (el) { try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } }
+      var t = PHASEN_TITEL[S.phase] || "";
+      if (S.phase !== "start" && S.phase !== "abschluss" && S.ep) t = "Episode " + S.schritt + ": " + (kern.episode(S.ep).titel) + ". " + t;
+      document.getElementById("ansage").textContent = t;
+    }
+    var nb = document.getElementById("btn-neu-abschluss");
+    if (nb) nb.addEventListener("click", neuesSpielFragen);
+    var form = document.getElementById("form-wurf");
+    if (form) form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (gesperrt()) return;
+      var inp = document.getElementById("wurf-eingabe"), fe = document.getElementById("wurf-fehler");
+      var t = inp.value.trim();
+      var n = /^\d{1,2}$/.test(t) ? parseInt(t, 10) : NaN;
+      if (!(n >= 1 && n <= kern.K.wuerfelSeiten)) {
+        fe.textContent = "Bitte eine ganze Zahl von 1 bis " + kern.K.wuerfelSeiten + " eingeben.";
+        inp.setAttribute("aria-invalid", "true");
+        inp.focus();
+        return;
+      }
+      setzeWurf(n, "physisch");
+    });
+  }
+
+  /* ---------- Ereignisse ---------- */
+  app.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-aktion]");
+    if (!b || b.disabled) return;
+    if (gesperrt()) return;
+    var f = aktionen[b.getAttribute("data-aktion")];
+    if (!f) return;
+    var r = f(b.getAttribute("data-wert"), b);
+    if (r !== "bereits") nachAktion(true);
+  });
+  document.getElementById("btn-undo").addEventListener("click", function () { if (!gesperrt()) rueckgaengig(); });
+
+  function neuesSpielFragen() { document.getElementById("bestaetigung").hidden = false; document.getElementById("btn-neu-ja").focus(); }
+  document.getElementById("btn-neu").addEventListener("click", neuesSpielFragen);
+  document.getElementById("btn-neu-nein").addEventListener("click", function () { document.getElementById("bestaetigung").hidden = true; });
+  document.getElementById("btn-neu-ja").addEventListener("click", function () {
+    document.getElementById("bestaetigung").hidden = true;
+    S = neuerZustand(); undoStapel = [];
+    nachAktion(true);
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var t = ev.target, tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || ev.altKey || ev.metaKey) return;
+    var k = ev.key.toLowerCase();
+    if ((ev.ctrlKey) && k === "z") { ev.preventDefault(); if (!gesperrt()) rueckgaengig(); return; }
+    if (ev.ctrlKey) return;
+    if (gesperrt()) return;
+    if (S.phase === "entscheidung" && (k === "a" || k === "b")) { aktionen.waehle(k.toUpperCase()); nachAktion(true); }
+    else if (S.phase === "mikro-entscheidung" && (k === "a" || k === "b")) { aktionen.mikroWahl(k.toUpperCase()); nachAktion(true); }
+    else if (S.phase === "wurf" && k === "w") { aktionen.wuerfeln(); }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (S.phase !== "abschluss") return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { var d = document.getElementById("diagramm"); if (d) d.innerHTML = diagramm(); }, 150);
+  });
+
+  /* ---------- Start ---------- */
+  var wiederhergestellt = false;
+  if (seed === null && abParam === null && params.get("neu") === null) wiederhergestellt = laden();
+  if (!wiederhergestellt) S = neuerZustand();
+  render(true);
+
+  /* Testhaken (siehe README): nur lesen und Zustand setzen, ändert keine Regeln. */
+  window.GLUECK = {
+    kern: kern, daten: D, texte: T, konfig: kern.K, abModus: abModus,
+    zustand: function () { return kopie(S); },
+    undoTiefe: function () { return undoStapel.length; },
+    entsperren: function () { sperreBis = 0; },
+    setze: function (patch) { Object.keys(patch).forEach(function (k) { S[k] = patch[k]; }); nachAktion(true); sperreBis = 0; },
+    springe: function (epId, werte) { /* Episode direkt mit gegebenen Werten (nach Beginn-Änderungen) starten */
+      var w = kopie(S.werte); Object.keys(werte || {}).forEach(function (k) { w[k] = werte[k]; });
+      S.werte = w; S.ep = epId; S.schritt = Math.max(S.schritt, 1);
+      S.wahl = null; S.wahlAnz = null; S.wurf = null; S.rech = null; S.beginn = null; S.glueckFrei = false; S.markiert = []; S.phase = "entscheidung";
+      nachAktion(true); sperreBis = 0;
+    }
+  };
+})();
+</script>
+</body>
+</html>

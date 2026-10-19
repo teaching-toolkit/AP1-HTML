@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forschungsbefunde einschätzen</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  [hidden] { display: none !important; }
+  .btn { -webkit-tap-highlight-color: transparent; }
+  .btn:active { opacity: .85; }
+  .wrap { max-width: 46rem; }
+  .wrap.breit { max-width: 960px; }
+  .kopf { padding: 4px 0 12px; }
+  .kopf h1 { font-size: 1.05rem; color: var(--muted); font-weight: 600; margin: 0; }
+  [tabindex="-1"]:focus { outline: none; }
+  em { font-style: italic; font-weight: 700; }
+
+  .fortschritt { margin: 0 0 14px; }
+  .fortschritt .zeile { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap;
+    font-size: .92rem; color: var(--muted); margin-bottom: 6px; }
+  h2.befund-titel { font-size: 1.3rem; margin: 0 0 12px; }
+
+  .etikett { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700;
+    color: var(--muted); margin: 0 0 6px; }
+  .karte-befund { border-left: 5px solid var(--accent); }
+  .karte-befund.zweit { border-left-color: var(--border); }
+  .text-gross { font-size: 1.15rem; line-height: 1.55; margin: 0; }
+  .text-mittel { margin: 0; }
+  .eigene { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+
+  .stichwort-hinweis { margin: 4px 0 8px; }
+  textarea.stichworte { min-height: 72px; }
+  .feld-fuss { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; margin-top: 6px; }
+  .aktion { margin-top: 16px; }
+  .aktion .hint { margin-top: 8px; }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; }
+  .nav .btn.primary { flex: 1 1 11rem; }
+  .btn.voll { width: 100%; }
+  .btn.link { background: transparent; border-color: transparent; text-decoration: underline; padding-left: 8px; padding-right: 8px; }
+
+  .skala { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .skala legend { font-weight: 600; padding: 0; margin-bottom: 10px; }
+  .skala-reihe { display: flex; gap: 8px; }
+  .skala-opt { -webkit-tap-highlight-color: transparent; position: relative; flex: 1 1 0; min-width: 44px; margin: 0; }
+  .skala-opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .skala-opt span { display: flex; align-items: center; justify-content: center; min-height: 56px;
+    border: 2px solid var(--muted); border-radius: 12px; background: var(--card);
+    font-size: 1.25rem; font-weight: 700; }
+  .skala-opt:hover span { border-color: var(--accent); }
+  .skala-opt input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .skala-opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .skala-enden { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px;
+    font-size: .92rem; color: var(--muted); }
+
+  .berichte { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
+  .bericht { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; box-shadow: var(--shadow); }
+  .bericht.leer { box-shadow: none; border-style: dashed; background: transparent; }
+  .bericht-kopf { display: flex; align-items: flex-start; gap: 10px; }
+  .bericht-nr { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft);
+    color: var(--fg); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; }
+  .bericht-kopf h3 { margin: 2px 0 0; flex: 1 1 0; min-width: 0; font-size: 1rem; }
+  .bericht-wert { flex: none; text-align: right; font-size: .9rem; color: var(--muted); white-space: nowrap; }
+  .bericht-wert strong { color: var(--fg); font-size: 1.1rem; }
+  .punkte { display: flex; gap: 3px; justify-content: flex-end; margin-top: 3px; }
+  .punkte i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--muted); display: block; }
+  .punkte i.an { background: var(--accent); border-color: var(--accent); }
+  .bericht p { margin: 8px 0 0; overflow-wrap: anywhere; }
+  .bericht-kopf h3 { overflow-wrap: anywhere; }
+  .bericht .stichworte-zeile { color: var(--fg); }
+  .bericht details { margin-top: 8px; }
+  .bericht summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--accent); }
+
+  .aufl-liste { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+  .aufl { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; background: var(--card); }
+  .aufl-kopf { display: flex; align-items: flex-start; gap: 10px; }
+  .aufl-kopf h4 { margin: 2px 0 0; flex: 1 1 0; min-width: 0; font-size: 1rem; overflow-wrap: anywhere; }
+  .aufl p { margin: 8px 0 0; overflow-wrap: anywhere; }
+  .aufl .etikett { margin-top: 12px; }
+  .aufl .meine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; }
+  .aufl .vorbehalt { margin-top: 10px; font-size: .95rem; }
+  .marke { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .85rem; font-weight: 600;
+    color: var(--fg); border: 1px solid var(--muted); }
+  .marke.tats { background: var(--good-soft); border-color: var(--good); }
+  .marke.geg { background: var(--warn-soft); border-color: var(--warn); }
+
+  ::placeholder { color: var(--muted); opacity: 1; }
+  textarea.codes { min-height: 180px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+  table.gruppe { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.gruppe th, table.gruppe td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; }
+  table.gruppe th { font-size: .9rem; overflow-wrap: anywhere; hyphens: auto; }
+  table.gruppe th:first-child { width: 40%; }
+  table.gruppe tfoot td, table.gruppe tfoot th { border-top: 2px solid var(--border); font-weight: 700; }
+  table.gruppe .mw { font-weight: 700; font-size: 1.05rem; }
+  table.gruppe .n { color: var(--muted); font-size: .85rem; }
+  .balken { height: 6px; border-radius: 3px; background: var(--border); margin-top: 4px; overflow: hidden; }
+  .balken span { display: block; height: 100%; background: var(--accent); }
+  .balken.b span { background: var(--warn); }
+  .ungueltig { margin: 4px 0 0; padding-left: 1.2rem; }
+  .ungueltig li { margin: 2px 0; word-break: break-word; }
+
+  @media (max-width: 480px) {
+    .bericht-kopf { flex-wrap: wrap; }
+    .bericht-wert { flex: 1 1 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding-left: 38px; margin-top: -4px; }
+    .bericht-wert .punkte { margin-top: 0; }
+    table.gruppe th, table.gruppe td { padding: 8px 5px; }
+    table.gruppe th:first-child { width: 42%; font-size: .8rem; }
+    .btn { width: auto; }
+  }
+  @media print {
+    .kopf, .no-print, .aktion { display: none !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<div class="page wrap" id="seite">
+  <header class="kopf"><h1>Forschungsbefunde</h1></header>
+  <main id="main"></main>
+  <p class="hint no-print" id="fuss" style="margin-top:24px"></p>
+</div>
+<noscript><div class="page"><p class="notice warn">Diese Seite braucht JavaScript.</p></div></noscript>
+
+<script src="befunde.js" charset="utf-8"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     Konstanten
+  ------------------------------------------------------------------ */
+  var ANZAHL = 5;
+  var KENNUNG = "HSLU-hindsight-v2";
+  var ALPHA = "0123456789abcdefghijklmnopqrstuvwxyz";
+  var GEWICHTE = [1, 5, 7, 11, 13, 17, 19, 23];   /* 8 Zeichen (5 Daten + 3 Kennung), alle teilerfremd zu 36 */
+  var STORE_KEY = "hsluP3ZustandV2";
+  var BEFUNDE = window.BEFUNDE;
+  /* Die Auflösung nutzt die Fassung A als die tatsächliche Aussage (gemäss Auftrag).
+     Die Daten stehen damit im Code der Seite, das ist bewusst so (siehe README). */
+  var TATSAECHLICH = "A";
+
+  /* ------------------------------------------------------------------
+     Zufall: crypto.getRandomValues, mit ?seed= reproduzierbar (nur Tests)
+  ------------------------------------------------------------------ */
+  function xmur3(str) {
+    var h = 1779033703 ^ str.length;
+    for (var i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return h >>> 0;
+    };
+  }
+  function sfc32(a, b, c, d) {
+    return function () {
+      a |= 0; b |= 0; c |= 0; d |= 0;
+      var t = (((a + b) | 0) + d) | 0;
+      d = (d + 1) | 0;
+      a = b ^ (b >>> 9);
+      b = (c + (c << 3)) | 0;
+      c = (c << 21) | (c >>> 11);
+      c = (c + t) | 0;
+      return (t >>> 0) / 4294967296;
+    };
+  }
+  function seededRng(seed) {
+    var s = xmur3(String(seed));
+    var r = sfc32(s(), s(), s(), s());
+    for (var i = 0; i < 15; i++) r();
+    return r;
+  }
+  function cryptoRng() {
+    var c = window.crypto || window.msCrypto;
+    if (c && c.getRandomValues) {
+      var buf = new Uint32Array(1);
+      return function () { c.getRandomValues(buf); return buf[0] / 4294967296; };
+    }
+    return Math.random;   /* nur Notfall für sehr alte Browser */
+  }
+  function zufallsInt(rng, n) { return Math.floor(rng() * n); }
+
+  /* Zuteilung: 2 oder 3 von 5 Befunden in Fassung A, Rest B.
+     Zuerst wird die Anzahl (2 oder 3, je 50 %) gezogen, dann zufällig die Plätze. */
+  function zuteilung(rng) {
+    var k = rng() < 0.5 ? 2 : 3;
+    var idx = [], z = [], i;
+    for (i = 0; i < ANZAHL; i++) { idx.push(i); z.push("B"); }
+    for (i = ANZAHL - 1; i > 0; i--) {
+      var j = zufallsInt(rng, i + 1), t = idx[i]; idx[i] = idx[j]; idx[j] = t;
+    }
+    for (i = 0; i < k; i++) z[idx[i]] = "A";
+    return z;
+  }
+  function neueKennung(rng) {
+    var s = "";
+    for (var i = 0; i < 3; i++) s += ALPHA.charAt(zufallsInt(rng, 36));
+    return s;
+  }
+
+  /* ------------------------------------------------------------------
+     Ergebnis-Code:  HSLU-hindsight-v2.<5 Zeichen Daten><3 Zeichen Kennung><1 Prüfzeichen>
+     Datenzeichen je Befund: 0-9 = (Fassung A: 0, B: 5) + (Bewertung - 1), x = nicht bewertet
+  ------------------------------------------------------------------ */
+  function pruefzeichen(p) {
+    var s = 0;
+    for (var i = 0; i < p.length; i++) s += GEWICHTE[i] * ALPHA.indexOf(p.charAt(i));
+    return ALPHA.charAt(s % 36);
+  }
+  function codeErzeugen(zu, werte, kennung) {
+    var p = "";
+    for (var i = 0; i < ANZAHL; i++) {
+      var w = werte[i];
+      p += (w === null || w === undefined) ? "x" : String((zu[i] === "A" ? 0 : 5) + (w - 1));
+    }
+    p += kennung;
+    return KENNUNG + "." + p + pruefzeichen(p);
+  }
+  function codeLesen(roh) {
+    var t = String(roh).replace(/[​-‍﻿]/g, "").trim();
+    var m = /^HSLU-hindsight-v(\d+)\.(.*)$/i.exec(t);
+    if (!m) return { ok: false, grund: "Kennung «" + KENNUNG + "» fehlt" };
+    if (m[1] === "1") return { ok: false, alt: true, grund: "Code der früheren Seitenversion (v1, neun Befunde), wird nicht ausgewertet" };
+    if (m[1] !== "2") return { ok: false, grund: "Version v" + m[1] + " wird nicht unterstützt" };
+    var p = m[2].toLowerCase();
+    if (!/^[0-9a-z]*$/.test(p)) return { ok: false, grund: "ungültige Zeichen" };
+    if (p.length !== 9) return { ok: false, grund: "Länge stimmt nicht" };
+    var daten = p.slice(0, 5);
+    if (!/^[0-9x]{5}$/.test(daten)) return { ok: false, grund: "ungültige Zeichen im Datenteil" };
+    if (pruefzeichen(p.slice(0, 8)) !== p.charAt(8)) return { ok: false, grund: "Prüfzeichen stimmt nicht (Tippfehler?)" };
+    var eintraege = [], bewertet = 0;
+    for (var i = 0; i < ANZAHL; i++) {
+      var c = daten.charAt(i);
+      if (c === "x") { eintraege.push(null); continue; }
+      var d = c.charCodeAt(0) - 48;
+      eintraege.push({ v: d < 5 ? "A" : "B", w: (d % 5) + 1 });
+      bewertet++;
+    }
+    return { ok: true, kanon: KENNUNG.toLowerCase() + "." + p, eintraege: eintraege, bewertet: bewertet };
+  }
+
+  /* ------------------------------------------------------------------
+     Gruppenauswertung: ein Code pro Zeile
+  ------------------------------------------------------------------ */
+  function auswerten(text) {
+    var zeilen = String(text).split(/\r\n|\r|\n/);
+    var gesehen = {}, personen = [], ungueltig = [], alte = 0, duplikate = 0, i;
+    for (i = 0; i < zeilen.length; i++) {
+      var roh = zeilen[i].replace(/[​-‍﻿]/g, "").trim();
+      if (!roh) continue;
+      var r = codeLesen(roh);
+      if (!r.ok) {
+        if (r.alt) alte++;
+        ungueltig.push({ zeile: i + 1, text: roh, grund: r.grund, alt: !!r.alt });
+        continue;
+      }
+      if (gesehen[r.kanon]) { duplikate++; continue; }
+      gesehen[r.kanon] = true;
+      personen.push({ zeile: i + 1, eintraege: r.eintraege, bewertet: r.bewertet });
+    }
+    var pro = [], gesamt = { A: { n: 0, summe: 0 }, B: { n: 0, summe: 0 } };
+    for (i = 0; i < ANZAHL; i++) pro.push({ A: { n: 0, summe: 0 }, B: { n: 0, summe: 0 } });
+    personen.forEach(function (p) {
+      p.eintraege.forEach(function (e, k) {
+        if (!e) return;
+        pro[k][e.v].n++; pro[k][e.v].summe += e.w;
+        gesamt[e.v].n++; gesamt[e.v].summe += e.w;
+      });
+    });
+    function mw(o) { o.mittel = o.n ? o.summe / o.n : null; }
+    pro.forEach(function (o) { mw(o.A); mw(o.B); });
+    mw(gesamt.A); mw(gesamt.B);
+    var unvollstaendig = personen.filter(function (p) { return p.bewertet < ANZAHL; });
+    return { personen: personen, ungueltig: ungueltig, alte: alte, duplikate: duplikate,
+             unvollstaendig: unvollstaendig, pro: pro, gesamt: gesamt };
+  }
+
+  /* ------------------------------------------------------------------
+     Zustand und Speicher (sessionStorage, nur Komfort)
+     schritt: "p1" (Teil 1, Aussage idx), "uebergang", "p2" (Teil 2, Erklärung idx), "ende"
+  ------------------------------------------------------------------ */
+  var params = new URLSearchParams(location.search);
+  var seedParam = params.has("seed") ? params.get("seed") : null;
+  var S = null;                 /* Ablaufzustand, null = noch nicht gestartet */
+  var ansicht = params.get("gruppe") === "1" ? "gruppe" : "ablauf";
+  var guardAktiv = false;
+  var hinweisText = "";
+  var gruppeText = "";
+  var aufEnde = false;          /* Auflösung auf der Zusammenfassung geöffnet */
+  var aufGruppe = false;        /* Auflösung in «Gruppe auswerten» geöffnet */
+
+  function speichern() {
+    try { sessionStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* ohne Speicher weiter */ }
+  }
+  function zustandOk(o) {
+    if (!o || o.v !== 2 || !Array.isArray(o.zuteilung) || o.zuteilung.length !== ANZAHL) return false;
+    if (!Array.isArray(o.antworten) || o.antworten.length !== ANZAHL) return false;
+    if (["p1", "uebergang", "p2", "ende"].indexOf(o.schritt) < 0) return false;
+    if (typeof o.idx !== "number" || o.idx < 0 || o.idx >= ANZAHL) return false;
+    if (typeof o.kennung !== "string" || o.kennung.length !== 3) return false;
+    for (var i = 0; i < ANZAHL; i++) {
+      if (o.zuteilung[i] !== "A" && o.zuteilung[i] !== "B") return false;
+      var a = o.antworten[i];
+      if (!a || typeof a.text !== "string") return false;
+      if (a.wert !== null && !(a.wert >= 1 && a.wert <= 5)) return false;
+    }
+    return true;
+  }
+  function laden() {
+    try {
+      if (params.get("neu") === "1") {
+        sessionStorage.removeItem(STORE_KEY);
+        params.delete("neu");
+        var qs = params.toString();
+        try { history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "")); } catch (e2) { /* file:// */ }
+        return null;
+      }
+      var s = sessionStorage.getItem(STORE_KEY);
+      if (!s) return null;
+      var o = JSON.parse(s);
+      if (!zustandOk(o)) return null;
+      if (seedParam !== null && o.seed !== seedParam) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+
+  function starten() {
+    var rng = seedParam !== null ? seededRng(seedParam) : cryptoRng();
+    var antworten = [];
+    for (var i = 0; i < ANZAHL; i++) antworten.push({ text: "", wert: null });
+    S = { v: 2, seed: seedParam, zuteilung: zuteilung(rng), kennung: neueKennung(rng),
+          idx: 0, schritt: "p1", antworten: antworten };
+    speichern();
+    guardEinschalten();
+  }
+
+  /* Browser-Zurück: In Teil 1 geht es einen Befund zurück (wie der Knopf «Zurück»).
+     Ab dem Übergang zu Teil 2 bleibt die Seite stehen und zeigt einen Hinweis.
+     Am Ende ist Zurück wieder frei. */
+  function guardEinschalten() {
+    if (guardAktiv) return;
+    guardAktiv = true;
+    try { history.replaceState({ p3: "basis" }, ""); history.pushState({ p3: "ablauf" }, ""); } catch (e) { /* ignorieren */ }
+  }
+  window.addEventListener("popstate", function () {
+    if (!guardAktiv || !S || S.schritt === "ende") return;   /* am Ende ist Zurück wieder frei */
+    try { history.pushState({ p3: "ablauf" }, ""); } catch (e) { /* ignorieren */ }
+    if (ansicht !== "ablauf") return;
+    if (S.schritt === "p1" && S.idx > 0) {
+      S.idx = S.idx - 1;
+      speichern();
+      render(true);
+      return;
+    }
+    var fokusId = document.activeElement && document.activeElement.id;
+    hinweisText = S.schritt === "p1"
+      ? "Das war die erste Aussage. Weiter zurück geht es nicht."
+      : "Zurück ist ab Teil 2 nicht mehr möglich. Du bist beim aktuellen Schritt geblieben.";
+    render(false);
+    var wieder = fokusId && document.getElementById(fokusId);
+    if (wieder) wieder.focus();
+  });
+
+  /* ------------------------------------------------------------------
+     DOM-Hilfen (alles über textContent, keine Eingabe landet in innerHTML)
+  ------------------------------------------------------------------ */
+  function el(tag, props) {
+    var e = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (v === false || v === null || v === undefined) return;
+        if (k === "class") e.className = v;
+        else if (k === "text") e.textContent = v;
+        else if (k.slice(0, 2) === "on") e.addEventListener(k.slice(2), v);
+        else if (v === true) e.setAttribute(k, "");
+        else e.setAttribute(k, v);
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) anhaengen(e, arguments[i]);
+    return e;
+  }
+  function anhaengen(e, c) {
+    if (c === null || c === undefined || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { anhaengen(e, x); }); return; }
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  /* *wort* -> kursiv */
+  function markiert(text) {
+    var f = document.createDocumentFragment();
+    String(text).split(/(\*[^*]+\*)/).forEach(function (t) {
+      if (!t) return;
+      if (t.length > 2 && t.charAt(0) === "*" && t.charAt(t.length - 1) === "*") f.appendChild(el("em", { text: t.slice(1, -1) }));
+      else f.appendChild(document.createTextNode(t));
+    });
+    return f;
+  }
+  function fassung(i) { return BEFUNDE[i][S.zuteilung[i]]; }
+  function zahl2(x) { return x === null ? "–" : x.toFixed(2); }
+
+  var main = document.getElementById("main");
+  var seite = document.getElementById("seite");
+  var fuss = document.getElementById("fuss");
+
+  /* ------------------------------------------------------------------
+     Bildschirme
+  ------------------------------------------------------------------ */
+  function kopfFortschritt() {
+    var teil1 = S.schritt === "p1";
+    var teil = teil1 ? "Teil 1 von 2: Aussagen beurteilen" : "Teil 2 von 2: Erklärungen einordnen";
+    var balken = el("span", { style: "width:" + Math.round(S.idx / ANZAHL * 100) + "%" });
+    var bar = el("div", { class: "progress", role: "progressbar", "aria-label": "Fortschritt in " + (teil1 ? "Teil 1" : "Teil 2"),
+                          "aria-valuemin": "0", "aria-valuemax": String(ANZAHL), "aria-valuenow": String(S.idx),
+                          "aria-valuetext": "Befund " + (S.idx + 1) + " von " + ANZAHL }, balken);
+    return el("div", { class: "fortschritt" },
+      el("div", { class: "zeile" },
+        el("span", { text: "Befund " + (S.idx + 1) + " von " + ANZAHL }),
+        el("span", { text: teil })),
+      bar);
+  }
+
+  function bildschirmStart() {
+    return [
+      el("h2", { text: "So läuft es ab", tabindex: "-1", "data-fokus": "1" }),
+      el("div", { class: "card" },
+        el("p", { text: "Du liest fünf Aussagen aus der psychologischen Forschung. Es gibt zwei Teile:" }),
+        el("ol", null,
+          el("li", null, el("strong", { text: "Teil 1: Aussagen beurteilen. " }),
+            "Du liest jede Aussage und schreibst auf, wie du sie erklären würdest. Stichworte genügen: ein bis zwei Wörter oder ein kurzer Halbsatz reichen. In Teil 1 kannst du zurückgehen."),
+          el("li", null, el("strong", { text: "Teil 2: Erklärungen einordnen. " }),
+            "Zu jeder Aussage siehst du eine Erklärung und bewertest auf einer Skala von 1 bis 5, wie plausibel sie jetzt auf dich wirkt. Danach gibt es kein Zurück mehr.")),
+        el("p", { text: "Arbeite still für dich. Plane etwa 6 bis 8 Minuten ein." }),
+        el("p", { class: "hint", text: "Deine Eingaben bleiben auf diesem Gerät. Es werden keine Daten gesendet." }),
+        el("div", { class: "aktion" },
+          el("button", { type: "button", class: "btn primary voll", id: "start", text: "Starten",
+            onclick: function () { starten(); render(true); } })))
+    ];
+  }
+
+  /* Teil 1: Aussage beurteilen */
+  function bildschirmTeil1() {
+    var i = S.idx, b = BEFUNDE[i], f = fassung(i);
+    var a = S.antworten[i];
+    var letzter = i === ANZAHL - 1;
+    var eingabe = el("textarea", { id: "stichworte", class: "stichworte", rows: "2", maxlength: "300", autocomplete: "off",
+      spellcheck: "false", enterkeyhint: letzter ? "done" : "next", "aria-describedby": "p1-hilfe zaehler leer-hinweis" });
+    eingabe.value = a.text;
+    var zaehler = el("span", { id: "zaehler", text: "0 Zeichen" });
+    function zaehlen() { zaehler.textContent = eingabe.value.length + " Zeichen"; }
+    zaehlen();
+    eingabe.addEventListener("input", function () {
+      zaehlen();
+      S.antworten[i].text = eingabe.value;   /* Entwurf, damit Neuladen und Zurück nichts verlieren */
+      speichern();
+    });
+
+    var form = el("form", { id: "form-p1", novalidate: true,
+      onsubmit: function (ev) {
+        ev.preventDefault();
+        S.antworten[i].text = eingabe.value.trim();
+        if (letzter) { S.schritt = "uebergang"; S.idx = 0; } else { S.idx = i + 1; }
+        speichern();
+        render(true);
+      } });
+    /* Enter schickt ab (Umschalt + Enter macht einen Zeilenumbruch) */
+    eingabe.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); form.requestSubmit(); }
+    });
+    var zurueck = i > 0 ? el("button", { type: "button", class: "btn", id: "zurueck-p1", text: "Zurück",
+      onclick: function () { S.antworten[i].text = eingabe.value; S.idx = i - 1; speichern(); render(true); } }) : null;
+    anhaengen(form, [
+      el("label", { for: "stichworte", text: "Wie würdest du diesen Befund erklären?" }),
+      el("p", { class: "stichwort-hinweis", id: "p1-hilfe" },
+        el("strong", { text: "Stichworte genügen:" }), " ein bis zwei Wörter oder ein kurzer Halbsatz reichen."),
+      eingabe,
+      el("div", { class: "feld-fuss hint" }, zaehler,
+        el("span", { id: "leer-hinweis", text: "Du kannst das Feld auch leer lassen." })),
+      el("div", { class: "aktion" },
+        el("div", { class: "nav" }, zurueck,
+          el("button", { type: "submit", class: "btn primary", id: "weiter-p1",
+            text: letzter ? "Teil 1 abschliessen" : "Weiter zu Befund " + (i + 2) })),
+        el("p", { class: "hint", text: letzter ? "Danach kannst du Teil 1 nicht mehr ändern." : "In Teil 1 kannst du noch zurückgehen." }))
+    ]);
+    return [
+      kopfFortschritt(),
+      el("h2", { class: "befund-titel", tabindex: "-1", "data-fokus": "1", text: "Befund " + b.nr + ": " + b.titel }),
+      el("div", { class: "card karte-befund" },
+        el("p", { class: "etikett", text: "Studienaussage" }),
+        el("p", { class: "text-gross" }, markiert(f.studie))),
+      el("div", { class: "card" }, form)
+    ];
+  }
+
+  function bildschirmUebergang() {
+    return [
+      el("h2", { text: "Teil 1 ist abgeschlossen", tabindex: "-1", "data-fokus": "1", id: "uebergang" }),
+      el("div", { class: "card" },
+        el("p", { text: "Jetzt folgt Teil 2: Erklärungen einordnen." }),
+        el("p", { text: "Zu jeder der fünf Aussagen siehst du eine Erklärung, dazu deine Stichworte aus Teil 1. Bewerte auf einer Skala von 1 bis 5, wie plausibel die Erklärung jetzt auf dich wirkt." }),
+        el("p", { text: "Teil 1 kannst du ab hier nicht mehr ändern." }),
+        el("div", { class: "aktion" },
+          el("button", { type: "button", class: "btn primary voll", id: "start-p2", text: "Weiter zu Teil 2",
+            onclick: function () { S.schritt = "p2"; S.idx = 0; speichern(); render(true); } })))
+    ];
+  }
+
+  /* Teil 2: Erklärung einordnen */
+  function bildschirmTeil2() {
+    var i = S.idx, b = BEFUNDE[i], f = fassung(i), a = S.antworten[i];
+    var letzter = i === ANZAHL - 1;
+    var weiter = el("button", { type: "submit", class: "btn primary voll", id: "weiter-p2", disabled: true,
+      "aria-describedby": "wahl-hinweis",
+      text: letzter ? "Zusammenfassung ansehen" : "Weiter zu Befund " + (i + 2) });
+    var hinweis = el("p", { class: "hint", id: "wahl-hinweis", text: "Wähle eine Zahl von 1 bis 5." });
+    var texte = { 1: "1 von 5, gar nicht plausibel", 5: "5 von 5, sehr plausibel" };
+    var opts = [];
+    for (var w = 1; w <= 5; w++) {
+      (function (w) {
+        var radio = el("input", { type: "radio", name: "wert", value: String(w), "aria-label": texte[w] || (w + " von 5"),
+          onchange: function () { gewaehlt(w); } });
+        opts.push(el("label", { class: "skala-opt" }, radio, el("span", { "aria-hidden": "true", text: String(w) })));
+      })(w);
+    }
+    var gewaehltWert = null;
+    function gewaehlt(w) {
+      gewaehltWert = w;
+      weiter.disabled = false;
+      hinweis.textContent = "Gewählt: " + w + " von 5.";
+    }
+    var form = el("form", { id: "form-p2", novalidate: true,
+      onsubmit: function (ev) {
+        ev.preventDefault();
+        if (gewaehltWert === null) return;
+        S.antworten[i].wert = gewaehltWert;
+        if (letzter) { S.schritt = "ende"; } else { S.idx = i + 1; }
+        speichern();
+        render(true);
+      } },
+      el("fieldset", { class: "skala" },
+        el("legend", { text: "Wie plausibel wirkt diese Erklärung jetzt auf dich?" }),
+        el("div", { class: "skala-reihe" }, opts),
+        el("div", { class: "skala-enden" },
+          el("span", { text: "1 = gar nicht plausibel" }),
+          el("span", { text: "5 = sehr plausibel" }))),
+      el("div", { class: "aktion" }, weiter, hinweis));
+    return [
+      kopfFortschritt(),
+      el("h2", { class: "befund-titel", tabindex: "-1", "data-fokus": "1", text: "Befund " + b.nr + ": " + b.titel }),
+      el("div", { class: "card karte-befund zweit" },
+        el("p", { class: "etikett", text: "Studienaussage" }),
+        el("p", { class: "text-mittel" }, markiert(f.studie)),
+        el("p", { class: "eigene", id: "eigene-stichworte" },
+          el("span", { class: "hint", text: "Deine Stichworte: " }),
+          a.text ? a.text : el("span", { class: "muted", text: "(leer gelassen)" }))),
+      el("div", { class: "card karte-befund" },
+        el("p", { class: "etikett", text: "Erklärung" }),
+        el("p", { class: "text-gross", id: "erklaerung", text: f.erklaerung })),
+      el("div", { class: "card" }, form)
+    ];
+  }
+
+  function punkte(w) {
+    var p = el("span", { class: "punkte", "aria-hidden": "true" });
+    for (var k = 1; k <= 5; k++) p.appendChild(el("i", { class: k <= w ? "an" : "" }));
+    return p;
+  }
+
+  function codeKarte(code) {
+    var status = el("span", { id: "kopiert", class: "hint", role: "status" });
+    var box = el("div", { class: "code", id: "code", text: code });
+    function ok(txt) { status.textContent = txt; }
+    function fallback() {
+      var ta = el("textarea", { "aria-hidden": "true", tabindex: "-1", style: "position:fixed;left:-9999px;top:0;min-height:0;height:1px;width:1px" });
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      var erfolg = false;
+      try { erfolg = document.execCommand("copy"); } catch (e) { erfolg = false; }
+      document.body.removeChild(ta);
+      ok(erfolg ? "Code kopiert." : "Kopieren nicht möglich. Tippe auf den Code, um ihn zu markieren, und kopiere ihn von Hand.");
+    }
+    function kopieren() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function () { ok("Code kopiert."); }, fallback);
+      } else { fallback(); }
+    }
+    return el("div", { class: "card no-print" },
+      el("h3", { text: "Ergebnis-Code" }),
+      el("p", { class: "hint", text: "Der Code enthält nur Ergebnisse, keine Namen und keine Freitexte. Gib ihn der Fachperson." }),
+      box,
+      el("div", { class: "row", style: "margin-top:12px" },
+        el("button", { type: "button", class: "btn primary", id: "kopieren", text: "Code kopieren", onclick: kopieren }),
+        status));
+  }
+
+  /* Auflösung: pro Befund die Aussage, die tatsächlich gestimmt hat, mit Erklärung, Quelle und Vorbehalt.
+     persoenlich = true: zusätzlich, welche Version die Person hatte, und ihre Bewertung. */
+  function aufloesungListe(persoenlich) {
+    var liste = el("ol", { class: "aufl-liste", id: persoenlich ? "aufl-liste" : "aufl-liste-gruppe" });
+    BEFUNDE.forEach(function (b, i) {
+      var t = b[TATSAECHLICH];
+      var li = el("li", { class: "aufl" },
+        el("div", { class: "aufl-kopf" },
+          el("span", { class: "bericht-nr", text: String(b.nr) }),
+          el("h4", { text: b.titel })));
+      if (persoenlich && S) {
+        var eigene = S.zuteilung[i] === TATSAECHLICH;
+        var wert = S.antworten[i].wert;
+        li.appendChild(el("div", { class: "meine" },
+          el("span", { class: "marke " + (eigene ? "tats" : "geg"),
+            text: eigene ? "Deine Version: die tatsächliche Aussage" : "Deine Version: die gegenteilige Aussage" }),
+          wert === null ? null : el("span", { class: "hint", text: "Deine Plausibilität: " + wert + " von 5" })));
+      }
+      li.appendChild(el("p", { class: "etikett", text: "Das hat tatsächlich gestimmt" }));
+      li.appendChild(el("p", { class: "text-mittel" }, markiert(t.studie)));
+      li.appendChild(el("p", { class: "hint", text: "Erklärung: " + t.erklaerung }));
+      if (b.quelle) li.appendChild(el("p", { class: "hint", text: "Quelle: " + b.quelle }));
+      if (b.vorbehalt) li.appendChild(el("p", { class: "notice vorbehalt", text: "Vorbehalt: " + b.vorbehalt }));
+      liste.appendChild(li);
+    });
+    return liste;
+  }
+
+  function bildschirmEnde() {
+    var liste = el("ol", { class: "berichte", id: "berichte" });
+    for (var i = 0; i < ANZAHL; i++) {
+      var b = BEFUNDE[i], a = S.antworten[i], f = fassung(i);
+      if (a.wert === null) {
+        liste.appendChild(el("li", { class: "bericht leer" },
+          el("div", { class: "bericht-kopf" },
+            el("span", { class: "bericht-nr", text: String(b.nr) }),
+            el("h3", { text: b.titel }),
+            el("span", { class: "bericht-wert", text: "nicht bearbeitet" }))));
+        continue;
+      }
+      liste.appendChild(el("li", { class: "bericht" },
+        el("div", { class: "bericht-kopf" },
+          el("span", { class: "bericht-nr", text: String(b.nr) }),
+          el("h3", { text: b.titel }),
+          el("span", { class: "bericht-wert" },
+            el("span", { text: "Plausibilität " }), el("strong", { text: String(a.wert) }), " von 5",
+            punkte(a.wert))),
+        el("p", { class: "studie" }, el("span", { class: "hint", text: "Studienaussage: " }), markiert(f.studie)),
+        el("p", { class: "stichworte-zeile" },
+          el("span", { class: "hint", text: "Deine Stichworte: " }),
+          a.text ? a.text : el("span", { class: "muted", text: "(leer gelassen)" })),
+        el("details", null,
+          el("summary", { text: "Erklärung anzeigen" }),
+          el("p", { text: f.erklaerung }))));
+    }
+    var code = codeErzeugen(S.zuteilung, S.antworten.map(function (a) { return a.wert; }), S.kennung);
+
+    /* Auflösung: nur auf Klick, der Inhalt wird erst dann aufgebaut */
+    var aufBox = el("div", { id: "aufloesung", hidden: true });
+    var aufKnopf = el("button", { type: "button", class: "btn", id: "aufloesung-zeigen", text: "Auflösung anzeigen",
+      "aria-expanded": "false", "aria-controls": "aufloesung" });
+    function aufSetzen(offen) {
+      aufEnde = offen;
+      aufBox.textContent = "";
+      if (offen) { aufBox.appendChild(aufloesungListe(true)); }
+      aufBox.hidden = !offen;
+      aufKnopf.textContent = offen ? "Auflösung verbergen" : "Auflösung anzeigen";
+      aufKnopf.setAttribute("aria-expanded", offen ? "true" : "false");
+    }
+    aufKnopf.addEventListener("click", function () { aufSetzen(!aufEnde); });
+    var aufKarte = el("div", { class: "card no-print", id: "aufloesung-karte" },
+      el("h3", { text: "Auflösung" }),
+      el("p", { class: "hint", text: "Öffne die Auflösung erst, nachdem du deine Berichte in der Gruppe verglichen hast." }),
+      el("div", { class: "row" }, aufKnopf),
+      aufBox);
+    if (aufEnde) aufSetzen(true);
+
+    return [
+      el("h2", { text: "Deine fünf Berichte", tabindex: "-1", "data-fokus": "1" }),
+      el("p", { class: "muted", text: "Du bist fertig. Vergleiche jetzt deine Berichte mit denen der Gruppe. Wie es weitergeht, sagt die Fachperson." }),
+      liste,
+      codeKarte(code),
+      aufKarte
+    ];
+  }
+
+  function bildschirmGruppe() {
+    var eingabe = el("textarea", { id: "codes", class: "codes", rows: "8", spellcheck: "false", autocomplete: "off",
+      "aria-describedby": "codes-hinweis", placeholder: "HSLU-hindsight-v2.…" });
+    eingabe.value = gruppeText;
+    eingabe.addEventListener("input", function () { gruppeText = eingabe.value; });
+    var ergebnis = el("div", { id: "gruppe-ergebnis", "aria-live": "polite" });
+    var karte = el("div", { class: "card", id: "gruppe-karte", hidden: true }, ergebnis);
+
+    function tabelle(r) {
+      var kopf = el("thead", null, el("tr", null,
+        el("th", { scope: "col", text: "Befund" }),
+        el("th", { scope: "col", id: "kopf-a", text: aufGruppe ? "Version A (echt)" : "Version A" }),
+        el("th", { scope: "col", id: "kopf-b", text: aufGruppe ? "Version B (gegenteilig)" : "Version B" })));
+      var body = el("tbody");
+      function zelle(o, klasse) {
+        return el("td", null,
+          el("div", { class: "mw", text: o.n ? zahl2(o.mittel) : "–" }),
+          el("div", { class: "n", text: "n = " + o.n }),
+          el("div", { class: "balken " + klasse, "aria-hidden": "true" },
+            el("span", { style: "width:" + (o.n ? Math.round(o.mittel / 5 * 100) : 0) + "%" })));
+      }
+      for (var i = 0; i < ANZAHL; i++) {
+        body.appendChild(el("tr", null,
+          el("th", { scope: "row", text: BEFUNDE[i].nr + ". " + BEFUNDE[i].titel }),
+          zelle(r.pro[i].A, "a"), zelle(r.pro[i].B, "b")));
+      }
+      var fuss2 = el("tfoot", null, el("tr", null,
+        el("th", { scope: "row", text: "Alle Befunde" }),
+        zelle(r.gesamt.A, "a"), zelle(r.gesamt.B, "b")));
+      return el("table", { class: "gruppe", id: "gruppe-tabelle" },
+        el("caption", { class: "sr-only", text: "Mittelwert der Plausibilität (1 bis 5) pro Befund, getrennt nach Version" }),
+        kopf, body, fuss2);
+    }
+
+    function zeigen() {
+      gruppeText = eingabe.value;
+      ergebnis.textContent = "";
+      karte.hidden = false;
+      var r = auswerten(gruppeText);
+      var n = r.personen.length;
+      var chips = el("div", { class: "chips", id: "gruppe-chips" },
+        el("span", { class: "chip", id: "chip-personen", text: n + (n === 1 ? " Person ausgewertet" : " Personen ausgewertet") }));
+      if (r.duplikate) chips.appendChild(el("span", { class: "chip", id: "chip-duplikate",
+        text: r.duplikate + (r.duplikate === 1 ? " Duplikat ignoriert" : " Duplikate ignoriert") }));
+      if (r.ungueltig.length) chips.appendChild(el("span", { class: "chip", id: "chip-ungueltig",
+        text: r.ungueltig.length + (r.ungueltig.length === 1 ? " ungültige Zeile" : " ungültige Zeilen") }));
+      if (r.unvollstaendig.length) chips.appendChild(el("span", { class: "chip", id: "chip-unvollstaendig",
+        text: r.unvollstaendig.length + (r.unvollstaendig.length === 1 ? " Person unvollständig" : " Personen unvollständig") }));
+      ergebnis.appendChild(chips);
+      if (r.alte) {
+        ergebnis.appendChild(el("div", { class: "notice warn", id: "gruppe-v1", style: "margin-bottom:8px" },
+          el("strong", { text: r.alte === 1 ? "1 Code der früheren Seitenversion (v1) nicht ausgewertet." : r.alte + " Codes der früheren Seitenversion (v1) nicht ausgewertet." }),
+          el("p", { class: "hint", text: "v1-Codes stammen aus der Fassung mit neun Befunden und passen nicht zu den fünf Befunden dieser Seite. Die Personen müssen die Seite neu durchlaufen." })));
+      }
+      if (r.ungueltig.length) {
+        ergebnis.appendChild(el("div", { class: "notice warn", id: "gruppe-ungueltig" },
+          el("strong", { text: "Nicht gelesen:" }),
+          el("ul", { class: "ungueltig" }, r.ungueltig.map(function (u) {
+            var t = u.text.length > 40 ? u.text.slice(0, 40) + "…" : u.text;
+            return el("li", { text: "Zeile " + u.zeile + ": «" + t + "» (" + u.grund + ")" });
+          }))));
+      }
+      if (r.unvollstaendig.length) {
+        ergebnis.appendChild(el("div", { class: "notice", id: "gruppe-unvollstaendig", style: "margin-top:8px" },
+          el("strong", { text: "Unvollständig:" }),
+          el("ul", { class: "ungueltig" }, r.unvollstaendig.map(function (p) {
+            return el("li", { text: "Zeile " + p.zeile + ": " + p.bewertet + " von " + ANZAHL + " Befunden bewertet" });
+          })),
+          el("p", { class: "hint", text: "In die Mittelwerte gehen nur die bewerteten Befunde ein." })));
+      }
+      if (!n) {
+        ergebnis.appendChild(el("p", { class: "muted", id: "gruppe-leer",
+          text: r.ungueltig.length ? "Keine gültigen Codes." : "Noch keine Codes eingefügt." }));
+        return;
+      }
+      ergebnis.appendChild(el("h3", { text: "Mittelwert der Plausibilität (1 bis 5)" }));
+      ergebnis.appendChild(el("p", { class: "hint", text: "Pro Befund getrennt nach Version. n ist die Anzahl der Bewertungen. Mittelwerte mit zwei Nachkommastellen." }));
+      ergebnis.appendChild(tabelle(r));
+    }
+
+    var zurueck = null;
+    if (S) zurueck = el("button", { type: "button", class: "btn", id: "zurueck-ablauf",
+      text: S.schritt === "ende" ? "Zurück zu meinen Berichten" : "Zurück zum Ablauf",
+      onclick: function () { ansicht = "ablauf"; render(true); } });
+    else zurueck = el("button", { type: "button", class: "btn", id: "zurueck-start", text: "Zurück zum Start",
+      onclick: function () { ansicht = "ablauf"; render(true); } });
+
+    /* Auflösung: Zuordnung der Versionen und die tatsächlichen Aussagen, erst auf Klick */
+    var aufKnopf = el("button", { type: "button", class: "btn", id: "gruppe-aufloesung-zeigen",
+      text: aufGruppe ? "Auflösung verbergen" : "Auflösung anzeigen",
+      "aria-expanded": aufGruppe ? "true" : "false", "aria-controls": "gruppe-aufloesung",
+      onclick: function () {
+        aufGruppe = !aufGruppe;
+        render(false);
+        var k = document.getElementById("gruppe-aufloesung-zeigen");
+        if (k) k.focus();
+      } });
+    var aufKarte = el("div", { class: "card", id: "gruppe-aufloesung-karte" },
+      el("h3", { text: "Auflösung" }),
+      el("p", { class: "hint", text: "Ordnet die Auswertung zu und zeigt die Befunde der Forschung. Öffne sie erst nach dem Vergleich in der Gruppe." }),
+      el("div", { class: "row" }, aufKnopf),
+      el("div", { id: "gruppe-aufloesung", hidden: !aufGruppe },
+        aufGruppe ? [
+          el("p", { class: "notice", id: "gruppe-zuordnung", text: "Version A ist die tatsächliche Aussage (echt), Version B die gegenteilige." }),
+          aufloesungListe(false)
+        ] : null));
+
+    if (gruppeText.trim()) zeigen();
+    return [
+      el("h2", { text: "Gruppe auswerten", tabindex: "-1", "data-fokus": "1" }),
+      el("div", { class: "card" },
+        el("label", { for: "codes", text: "Ergebnis-Codes der Gruppe" }),
+        el("p", { class: "hint", id: "codes-hinweis", text: "Ein Code pro Zeile. Leerzeilen und doppelte Codes werden ignoriert, ungültige Zeilen werden genannt." }),
+        eingabe,
+        el("div", { class: "row", style: "margin-top:12px" },
+          el("button", { type: "button", class: "btn primary", id: "auswerten", text: "Auswerten", onclick: zeigen }),
+          el("button", { type: "button", class: "btn", id: "leeren", text: "Leeren",
+            onclick: function () { eingabe.value = ""; zeigen(); eingabe.focus(); } }),
+          zurueck)),
+      karte,
+      aufKarte
+    ];
+  }
+
+  /* ------------------------------------------------------------------
+     Rendern
+  ------------------------------------------------------------------ */
+  function fehlerBildschirm(text) {
+    return [el("div", { class: "notice warn", id: "fehler" }, el("p", { text: text }))];
+  }
+  function datenOk() {
+    if (!Array.isArray(BEFUNDE) || BEFUNDE.length !== ANZAHL) return false;
+    return BEFUNDE.every(function (b) {
+      return b && b.titel && b.A && b.B && b.A.studie && b.A.erklaerung && b.B.studie && b.B.erklaerung;
+    });
+  }
+
+  function render(fokus) {
+    main.textContent = "";
+    seite.classList.toggle("breit", ansicht === "gruppe");
+    var teile;
+    if (!datenOk()) {
+      teile = fehlerBildschirm("Die Daten der Befunde (befunde.js) konnten nicht geladen werden. Lade die Seite neu oder melde dich bei der Fachperson.");
+    } else if (ansicht === "gruppe") {
+      teile = bildschirmGruppe();
+    } else if (!S) {
+      teile = bildschirmStart();
+    } else if (S.schritt === "p1") {
+      teile = bildschirmTeil1();
+    } else if (S.schritt === "uebergang") {
+      teile = bildschirmUebergang();
+    } else if (S.schritt === "p2") {
+      teile = bildschirmTeil2();
+    } else {
+      teile = bildschirmEnde();
+    }
+    if (hinweisText && ansicht === "ablauf" && S && S.schritt !== "ende") {
+      main.appendChild(el("p", { class: "notice warn", id: "hinweis", role: "status", text: hinweisText }));
+    }
+    hinweisText = "";
+    teile.forEach(function (t) { main.appendChild(t); });
+
+    /* Fuss: Link zur Gruppenansicht nur auf der Zusammenfassung */
+    fuss.textContent = "";
+    if (S || ansicht === "gruppe") fuss.appendChild(document.createTextNode("Deine Antworten bleiben auf diesem Gerät. "));
+    if (ansicht === "ablauf" && S && S.schritt === "ende") {
+      fuss.appendChild(el("button", { type: "button", class: "btn link", id: "zur-gruppe", text: "Gruppe auswerten",
+        onclick: function () { ansicht = "gruppe"; render(true); } }));
+    }
+    if (fokus) {
+      var f = main.querySelector("[data-fokus]");
+      if (f) f.focus();
+      window.scrollTo(0, 0);
+    }
+  }
+
+  /* Tasten 1 bis 5 wählen die Bewertung in Teil 2 (zusätzlich zu Tippen, Klicken und Pfeiltasten) */
+  document.addEventListener("keydown", function (ev) {
+    if (ansicht !== "ablauf" || !S || S.schritt !== "p2") return;
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (!/^[1-5]$/.test(ev.key)) return;
+    var t = ev.target;
+    if (t && (t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type === "text"))) return;
+    var r = main.querySelector('input[name="wert"][value="' + ev.key + '"]');
+    if (!r) return;
+    ev.preventDefault();
+    r.checked = true;
+    r.focus();
+    r.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  /* ------------------------------------------------------------------
+     Start
+  ------------------------------------------------------------------ */
+  /* Testhaken: reine Funktionen und Lesezugriff auf den Zustand (siehe README) */
+  window.P3 = {
+    zuteilung: zuteilung, seededRng: seededRng, cryptoRng: cryptoRng, neueKennung: neueKennung,
+    codeErzeugen: codeErzeugen, codeLesen: codeLesen, auswerten: auswerten,
+    zustand: function () { return S ? JSON.parse(JSON.stringify(S)) : null; }
+  };
+
+  if (datenOk()) {
+    S = laden();
+    if (S) {
+      if (S.schritt !== "ende") guardEinschalten();
+      if (S.schritt !== "ende" && ansicht === "ablauf") hinweisText = "Dein Fortschritt wurde wiederhergestellt.";
+    }
+  }
+  render(false);
+})();
+</script>
+</body>
+</html>

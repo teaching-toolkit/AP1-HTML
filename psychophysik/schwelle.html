@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schwellentest: Lückenerkennung</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+[hidden] { display: none !important; }
+.crumb { margin: 0 0 10px; font-size: .92rem; }
+.crumb a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
+.lead { margin: .25rem 0 1rem; }
+.vol { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+.vol input[type="range"] { min-height: 44px; }
+.steps { margin: .5rem 0 0; padding-left: 1.2rem; }
+.steps li { margin: .2rem 0; }
+.intervals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.ibox {
+  border: 2px solid var(--border); border-radius: var(--radius); min-height: 96px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--card); color: var(--muted); font-size: 2.4rem; font-weight: 700; line-height: 1.1;
+}
+.ibox small { font-size: .85rem; font-weight: 400; min-height: 1.2em; }
+.ibox.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answers .btn { min-height: 64px; font-size: 1.1rem; border-radius: var(--radius); }
+.answers .btn .key { display: block; font-size: .8rem; font-weight: 400; opacity: .8; }
+.runhead { margin-bottom: 4px; }
+.status { min-height: 3.2em; margin: .25rem 0 .75rem; }
+.fb { min-height: 1.6em; margin: .75rem 0 0; font-weight: 600; }
+.fb.good { color: var(--good); }
+.fb.bad { color: var(--bad); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 12px 0; }
+.stat { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card); }
+.stat .v { font-size: 1.35rem; font-weight: 700; }
+.stat .l { font-size: .85rem; color: var(--muted); }
+.big { font-size: 2.4rem; font-weight: 700; line-height: 1.15; margin: .25rem 0; }
+.chartbox { width: 100%; overflow: hidden; }
+.chart text { fill: var(--muted); font: 12px var(--font); }
+.chart .axis { stroke: var(--border); stroke-width: 1; }
+.chart .grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .line { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.chart .ok { fill: var(--accent); }
+.chart .no { stroke: var(--bad); stroke-width: 2; }
+.chart .rev { fill: none; stroke: var(--fg); stroke-width: 1.5; }
+.chart .thr { stroke: var(--good); stroke-width: 2; stroke-dasharray: 6 4; }
+.chart text.thrlabel { fill: var(--good); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .88rem; color: var(--muted); margin: .25rem 0 0; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: .92rem; }
+table.tbl th, table.tbl td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+table.tbl th { font-weight: 600; color: var(--muted); }
+table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; min-height: 44px; padding: 10px 0; }
+.codewrap { margin: .5rem 0; }
+.msg-error { border-left: 4px solid var(--bad); background: var(--bad-soft); padding: 10px 14px; border-radius: 8px; margin: 0 0 12px; }
+ul.plain { margin: .25rem 0; padding-left: 1.2rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="crumb"><a href="index.html">&larr; Übersicht</a></p>
+  <h1>Schwellentest: Lückenerkennung</h1>
+  <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+
+  <div id="audio-problem" class="msg-error" role="alert" hidden>
+    <p id="audio-problem-text" style="margin:0"></p>
+    <p style="margin:8px 0 0"><button type="button" class="btn" id="btn-audio-retry" hidden>Audio freigeben</button></p>
+  </div>
+
+  <!-- 1. Vorbereitung -->
+  <section id="view-setup" class="card" aria-labelledby="h-setup">
+    <h2 id="h-setup" tabindex="-1">Vorbereitung</h2>
+    <p class="lead">Du hörst zwei kurze Rauschbursts nacheinander. In einem davon steckt eine stille Lücke. Du gibst an, in welchem: 1 oder 2.</p>
+    <div class="notice"><strong>Kopfhörer:</strong> Setz Kopfhörer auf und such dir einen ruhigen Ort.</div>
+    <h3>Lautstärke</h3>
+    <div class="vol">
+      <div>
+        <label for="vol" class="sr-only">Lautstärke</label>
+        <input type="range" id="vol" min="0" max="100" step="1" value="40" aria-describedby="vol-hint">
+      </div>
+      <button type="button" class="btn" id="btn-testtone">Testton abspielen</button>
+    </div>
+    <p id="vol-hint" class="hint">Der Testton ist Rauschen wie im Test. Beginne leise und stell es auf angenehm laut. Das ist keine Kalibrierung. Hörst du nichts, prüfe Stummschalter, Gerätelautstärke und Kopfhörer.</p>
+    <h3>Ablauf</h3>
+    <ol class="steps">
+      <li>3 Übungsdurchgänge mit Rückmeldung</li>
+      <li>Test ohne Rückmeldung, er endet automatisch</li>
+      <li>Ergebnis mit Verlauf und Ergebnis-Code</li>
+    </ol>
+    <p class="hint">Antworten per Knopf oder mit den Tasten 1 und 2. Jeder Durchgang wird nur einmal abgespielt.</p>
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn primary" id="btn-to-practice">Weiter zur Übung</button>
+      <a class="btn ghost" href="#gruppe" id="link-group" style="text-decoration:none;display:inline-flex;align-items:center">Gruppe auswerten</a>
+    </div>
+    <p class="hint">Es werden keine Daten gesendet oder gespeichert.</p>
+  </section>
+
+  <!-- 2. Durchgänge (Übung und Test) -->
+  <section id="view-trial" class="card" aria-labelledby="h-trial" hidden>
+    <div class="row between runhead">
+      <h2 id="h-trial" tabindex="-1" style="margin:0">Übung</h2>
+      <span class="chip" id="trial-count">Durchgang 1</span>
+    </div>
+    <div class="progress" id="trial-progress-wrap" role="progressbar" aria-label="Fortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span id="trial-progress" style="width:0%"></span></div>
+    <div class="intervals" aria-hidden="true">
+      <div class="ibox" id="ibox1">1<small></small></div>
+      <div class="ibox" id="ibox2">2<small></small></div>
+    </div>
+    <p class="status" id="trial-status" role="status">Drück auf «Start», wenn du bereit bist.</p>
+    <div class="answers">
+      <button type="button" class="btn" id="ans1" disabled>Lücke in 1<span class="key">Taste 1</span></button>
+      <button type="button" class="btn" id="ans2" disabled>Lücke in 2<span class="key">Taste 2</span></button>
+    </div>
+    <p class="fb" id="trial-fb" aria-live="polite"></p>
+    <div class="row between" style="margin-top:8px">
+      <button type="button" class="btn primary" id="btn-go">Start</button>
+      <button type="button" class="btn ghost" id="btn-cancel">Abbrechen</button>
+    </div>
+  </section>
+
+  <!-- 3. Übung beendet -->
+  <section id="view-practice-done" class="card" aria-labelledby="h-pd" hidden>
+    <h2 id="h-pd" tabindex="-1">Übung beendet</h2>
+    <p id="pd-text"></p>
+    <div class="row">
+      <button type="button" class="btn primary" id="btn-start-test">Test starten</button>
+      <button type="button" class="btn" id="btn-practice-again">Nochmal üben</button>
+    </div>
+  </section>
+
+  <!-- 4. Ergebnis -->
+  <section id="view-result" class="card" aria-labelledby="h-result" hidden>
+    <h2 id="h-result" tabindex="-1">Ergebnis</h2>
+    <p class="big" id="res-main">–</p>
+    <p id="res-sub" class="muted"></p>
+    <div class="stats" id="res-stats"></div>
+    <p class="notice" id="res-note">Das Verfahren (2-down-1-up) konvergiert bei etwa 70.7 % richtigen Antworten, nicht bei 50 %. Die Schwelle gehört zu diesem Wert.</p>
+    <p class="notice warn" id="res-boundary" hidden></p>
+    <h3>Verlauf</h3>
+    <div class="chartbox" id="chart-wrap"></div>
+    <div class="legend" aria-hidden="true">
+      <span><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="var(--accent)"/></svg> richtig</span>
+      <span><svg width="14" height="14" aria-hidden="true"><path d="M3 3L11 11M11 3L3 11" stroke="var(--bad)" stroke-width="2"/></svg> falsch</span>
+      <span><svg width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="var(--fg)" stroke-width="1.5"/></svg> Umkehrpunkt</span>
+      <span><svg width="22" height="14" aria-hidden="true"><path d="M1 7H21" stroke="var(--good)" stroke-width="2" stroke-dasharray="5 3"/></svg> Schwelle</span>
+    </div>
+    <details>
+      <summary>Umkehrpunkte als Tabelle</summary>
+      <div class="scroll"><table class="tbl" id="tbl-rev"></table></div>
+    </details>
+    <details>
+      <summary>Alle Durchgänge als Tabelle</summary>
+      <div class="scroll"><table class="tbl" id="tbl-hist"></table></div>
+    </details>
+    <h3>Ergebnis-Code</h3>
+    <p class="hint">Enthält nur das Ergebnis, keine Namen. Gib den Code für die Gruppenauswertung weiter.</p>
+    <div class="codewrap"><div class="code" id="res-code" tabindex="0"></div></div>
+    <div class="row">
+      <button type="button" class="btn" id="btn-copy">Code kopieren</button>
+      <span id="copy-msg" class="hint" role="status"></span>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <a class="btn" id="link-group2" href="#gruppe" style="text-decoration:none;display:inline-flex;align-items:center">Gruppe auswerten</a>
+      <button type="button" class="btn ghost" id="btn-again">Noch einmal</button>
+    </div>
+  </section>
+
+  <!-- 5. Gruppe auswerten -->
+  <section id="view-group" class="card" aria-labelledby="h-group" hidden>
+    <h2 id="h-group" tabindex="-1">Gruppe auswerten</h2>
+    <label for="group-in">Ergebnis-Codes (ein Code pro Zeile)</label>
+    <textarea id="group-in" rows="6" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="HSLU-schwelle-v1...."></textarea>
+    <p class="hint">Leerzeilen und doppelte Codes werden ignoriert. Ungültige Zeilen werden benannt.</p>
+    <div class="row">
+      <button type="button" class="btn primary" id="btn-group-run">Auswerten</button>
+      <button type="button" class="btn ghost" id="btn-group-back">Zurück</button>
+    </div>
+    <div id="group-out" aria-live="polite" style="margin-top:12px"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ======================================================================
+   Testhaken (siehe README): window.__test darf VOR dem Laden gesetzt werden,
+   z. B. {instant:true, listener:function(trial){return 1;}, config:{...}}.
+   ====================================================================== */
+var T = window.__test = window.__test || {};
+
+/* ===== Konfiguration (Werte sind im README dokumentiert) ===== */
+var CONFIG = {
+  // Stimulus
+  burstMs: 400,          // Dauer jedes Rauschbursts
+  isiMs: 500,            // Stille zwischen den Bursts
+  leadMs: 150,           // Stille vor dem ersten Burst
+  tailMs: 100,           // Stille nach dem zweiten Burst
+  edgeRampMs: 10,        // cos^2-Ein-/Ausblenden am Burst-Anfang und -Ende
+  gapRampMs: 0.5,        // cos^2-Ein-/Ausblenden an den Lückenrändern (ausserhalb der Lücke)
+  gapOnsetMinMs: 120,    // Lückenbeginn (erstes Null-Sample) frühestens nach ... ms
+  gapOnsetMaxMs: 220,    // ... spätestens nach ... ms ab Burst-Beginn
+  sigma: 0.15,           // Standardabweichung des weissen Rauschens (Vollaussteuerung = 1)
+  // Treppenverfahren (2-down-1-up)
+  startMs: 20, minMs: 0.25, maxMs: 50,
+  nDown: 2,
+  stepLarge: 2, stepSmall: 1.25, switchAfterReversals: 2,
+  reversalsTarget: 12, meanLast: 8,
+  maxTrials: 100, ceilingLimit: 4, floorLimit: 3, boundaryShare: 0.5,
+  practiceMs: [30, 25, 20],
+  // Wiedergabe
+  maxGain: 0.8, defaultVolume: 40,
+  // Zeiten der Oberfläche
+  feedbackMs: 1000, itiMs: 500
+};
+if (T.config) { for (var ck in T.config) { if (Object.prototype.hasOwnProperty.call(T.config, ck)) CONFIG[ck] = T.config[ck]; } }
+
+/* ===== Zufall ===== */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function makeGauss(rng) {
+  var spare = null;
+  return function () {
+    if (spare !== null) { var s = spare; spare = null; return s; }
+    var u = 0; while (u === 0) u = rng();
+    var v = rng();
+    var m = Math.sqrt(-2 * Math.log(u));
+    spare = m * Math.sin(2 * Math.PI * v);
+    return m * Math.cos(2 * Math.PI * v);
+  };
+}
+function readSeed() {
+  var m = /[?&]seed=(\d+)/.exec(location.search);
+  if (m) return (parseInt(m[1], 10) >>> 0);
+  if (typeof T.seed === 'number') return T.seed >>> 0;
+  return (Math.random() * 4294967296) >>> 0;
+}
+var SEED = readSeed();
+var rngMain = mulberry32(SEED);
+
+/* ======================================================================
+   Stimulus-Generator (rein, ohne Web Audio; wird auch getestet)
+   ====================================================================== */
+function buildEnvelope(total, edgeSamples, gapStart, gapSamples, rampSamples) {
+  var env = new Float32Array(total), i, k;
+  for (i = 0; i < total; i++) env[i] = 1;
+  for (k = 0; k < edgeSamples; k++) {
+    var w = 0.5 * (1 - Math.cos(Math.PI * (k + 0.5) / edgeSamples));
+    env[k] = w; env[total - 1 - k] = w;
+  }
+  if (gapSamples > 0) {
+    for (k = 0; k < rampSamples; k++) {
+      var d = 0.5 * (1 + Math.cos(Math.PI * (k + 0.5) / rampSamples)); // 1 -> 0
+      env[gapStart - rampSamples + k] = d;     // Ausblenden vor der Lücke
+      env[gapStart + gapSamples + k] = 1 - d;  // Einblenden nach der Lücke
+    }
+    for (k = 0; k < gapSamples; k++) env[gapStart + k] = 0;
+  }
+  return env;
+}
+
+// opt: {durMs, gapMs | gapSamples, gapStartMs, seed | rng, sigma, rampMs, edgeMs}
+function generateBurst(sr, opt) {
+  var durMs = opt.durMs != null ? opt.durMs : CONFIG.burstMs;
+  var sigma = opt.sigma != null ? opt.sigma : CONFIG.sigma;
+  var rampMs = opt.rampMs != null ? opt.rampMs : CONFIG.gapRampMs;
+  var edgeMs = opt.edgeMs != null ? opt.edgeMs : CONFIG.edgeRampMs;
+  var total = Math.round(durMs * sr / 1000);
+  var edgeSamples = Math.round(edgeMs * sr / 1000);
+  var gapSamples = opt.gapSamples != null ? opt.gapSamples :
+    (opt.gapMs > 0 ? Math.max(1, Math.round(opt.gapMs * sr / 1000)) : 0);
+  var rampSamples = rampMs > 0 ? Math.max(2, Math.round(rampMs * sr / 1000)) : 0;
+  var gapStart = gapSamples > 0 ? Math.round((opt.gapStartMs != null ? opt.gapStartMs : (CONFIG.gapOnsetMinMs + CONFIG.gapOnsetMaxMs) / 2) * sr / 1000) : 0;
+  if (gapSamples > 0 && (gapStart - rampSamples < edgeSamples || gapStart + gapSamples + rampSamples > total - edgeSamples)) {
+    throw new Error('Lücke passt nicht in den Burst');
+  }
+  var rng = opt.rng || mulberry32((opt.seed || 0) >>> 0);
+  var gauss = makeGauss(rng);
+  var env = buildEnvelope(total, edgeSamples, gapStart, gapSamples, rampSamples);
+  var data = new Float32Array(total);
+  for (var i = 0; i < total; i++) {
+    var x = sigma * gauss();            // Rauschen wird für JEDES Sample gezogen, unabhängig von der Lücke
+    if (x > 1) x = 1; else if (x < -1) x = -1;
+    data[i] = x * env[i];
+  }
+  return { data: data, env: env, sr: sr, total: total, gapSamples: gapSamples, gapStart: gapStart,
+           rampSamples: rampSamples, edgeSamples: edgeSamples, sigma: sigma };
+}
+
+// o: {gapMs, gapInterval (1|2), rng, gapStartMs?}
+function generateTrial(sr, o) {
+  var rng = o.rng;
+  var burst = Math.round(CONFIG.burstMs * sr / 1000);
+  var lead = Math.round(CONFIG.leadMs * sr / 1000);
+  var isi = Math.round(CONFIG.isiMs * sr / 1000);
+  var tail = Math.round(CONFIG.tailMs * sr / 1000);
+  var total = lead + burst + isi + burst + tail;
+  var starts = [lead, lead + burst + isi];
+  var onset = o.gapStartMs != null ? o.gapStartMs :
+    CONFIG.gapOnsetMinMs + rng() * (CONFIG.gapOnsetMaxMs - CONFIG.gapOnsetMinMs);
+  var out = new Float32Array(total);
+  var info = null;
+  for (var iv = 1; iv <= 2; iv++) {
+    var withGap = (iv === o.gapInterval);
+    var b = generateBurst(sr, { rng: rng, gapMs: withGap ? o.gapMs : 0, gapStartMs: onset });
+    out.set(b.data, starts[iv - 1]);
+    if (withGap) info = b;
+  }
+  return {
+    sr: sr, data: out, total: total, starts: starts, burstSamples: burst,
+    gapInterval: o.gapInterval, gapMs: o.gapMs,
+    gapSamples: info.gapSamples, gapStartInBurst: info.gapStart, gapStartAbs: starts[o.gapInterval - 1] + info.gapStart,
+    rampSamples: info.rampSamples, edgeSamples: info.edgeSamples
+  };
+}
+
+/* ======================================================================
+   Treppenverfahren 2-down-1-up (logarithmische Schritte)
+   ====================================================================== */
+function Staircase(cfg) {
+  this.cfg = cfg;
+  this.level = cfg.startMs;
+  this.correctRun = 0;
+  this.lastDir = 0;
+  this.nTrials = 0;
+  this.nCorrect = 0;
+  this.reversals = [];      // {trial, level}
+  this.trials = [];         // {n, level, correct, move, reversal}
+  this.ceilingRun = 0;
+  this.floorRun = 0;
+  this.done = false;
+  this.status = null;       // 'ok' | 'ceiling' | 'floor' | 'maxtrials'
+  this.thresholdMs = null;
+  this.usedReversals = [];
+  this.boundaryCount = 0;
+}
+Staircase.prototype.record = function (correct) {
+  var c = this.cfg, lvl = this.level, move = 0, rev = false;
+  this.nTrials++;
+  if (correct) {
+    this.nCorrect++;
+    this.correctRun++;
+    if (this.correctRun >= c.nDown) { this.correctRun = 0; move = -1; }
+  } else {
+    this.correctRun = 0; move = 1;
+  }
+  // Grenzen
+  if (!correct && lvl >= c.maxMs) this.ceilingRun++; else this.ceilingRun = 0;
+  if (move === -1 && lvl <= c.minMs) this.floorRun++; else if (move === 1) this.floorRun = 0;
+  // Umkehrpunkt: Richtungswechsel bei einem Schritt
+  if (move !== 0) {
+    if (this.lastDir !== 0 && move !== this.lastDir) { this.reversals.push({ trial: this.nTrials, level: lvl }); rev = true; }
+    this.lastDir = move;
+    var step = this.reversals.length >= c.switchAfterReversals ? c.stepSmall : c.stepLarge;
+    var nl = move < 0 ? lvl / step : lvl * step;
+    this.level = Math.min(c.maxMs, Math.max(c.minMs, nl));
+  }
+  this.trials.push({ n: this.nTrials, level: lvl, correct: !!correct, move: move, reversal: rev });
+  // Abbruchbedingungen
+  if (this.reversals.length >= c.reversalsTarget) { this.finish('ok'); }
+  else if (this.ceilingRun >= c.ceilingLimit) { this.finish('ceiling'); }
+  else if (this.floorRun >= c.floorLimit) { this.finish('floor'); }
+  else if (this.nTrials >= c.maxTrials) { this.finish('maxtrials'); }
+  return { move: move, reversal: rev };
+};
+Staircase.prototype.finish = function (status) {
+  var c = this.cfg;
+  this.done = true;
+  this.status = status;
+  if (status !== 'ok') return;
+  var used = this.reversals.slice(-c.meanLast);
+  this.usedReversals = used;
+  var nMax = 0, nMin = 0, s = 0, i;
+  for (i = 0; i < used.length; i++) {
+    s += Math.log(used[i].level);
+    if (used[i].level >= c.maxMs) nMax++;
+    if (used[i].level <= c.minMs) nMin++;
+  }
+  this.boundaryCount = nMax + nMin;
+  if (nMax >= c.boundaryShare * used.length) { this.status = 'ceiling'; return; }
+  if (nMin >= c.boundaryShare * used.length) { this.status = 'floor'; return; }
+  this.thresholdMs = Math.exp(s / used.length);   // geometrisches Mittel (Schritte sind logarithmisch)
+};
+
+/* ======================================================================
+   Ergebnis-Code
+   ====================================================================== */
+var STATUS_CODE = { ok: 'o', ceiling: 'c', floor: 'f', maxtrials: 'm' };
+var CODE_STATUS = { o: 'ok', c: 'ceiling', f: 'floor', m: 'maxtrials' };
+function checksum(s) {
+  var h = 7;
+  for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 46656;
+  var t = h.toString(36);
+  while (t.length < 3) t = '0' + t;
+  return t;
+}
+function newId(rng) {
+  var t = Math.floor(rng() * 1679616).toString(36);
+  while (t.length < 4) t = '0' + t;
+  return t;
+}
+function buildCode(r, id) {
+  var thr = r.status === 'ok' ? Math.round(r.thresholdMs * 100) : 0;
+  var payload = 'HSLU-schwelle-v1.' + id + '.' + STATUS_CODE[r.status] + '.' + thr + '.' + r.nTrials + '.' + r.nCorrect;
+  return payload + '.' + checksum(payload);
+}
+// liefert {ok:true, id, status, thresholdMs, n, k} oder {ok:false, reason}
+function parseCode(str) {
+  var s = String(str).trim();
+  var low = s.toLowerCase();
+  if (!/^hslu-/.test(low)) return { ok: false, reason: 'kein Ergebnis-Code' };
+  var m = /^hslu-([a-z]+)-v(\d+)\./.exec(low);
+  if (!m) return { ok: false, reason: 'kein Ergebnis-Code' };
+  if (m[1] !== 'schwelle') return { ok: false, reason: 'Code gehört zu einer anderen Seite (' + m[1] + ')' };
+  if (m[2] !== '1') return { ok: false, reason: 'Version v' + m[2] + ' wird nicht unterstützt' };
+  var q = /^hslu-schwelle-v1\.([0-9a-z]{4})\.([ocfm])\.(\d{1,5})\.(\d{1,3})\.(\d{1,3})\.([0-9a-z]{3})$/.exec(low);
+  if (!q) return { ok: false, reason: 'Format ungültig' };
+  var payload = low.slice(0, low.lastIndexOf('.'));
+  // Die Prüfsumme wird über den Originaltext der Nutzlast gebildet (Gross-/Kleinschreibung des Präfixes zählt nicht)
+  var expected = checksum('HSLU-schwelle-v1.' + payload.slice('hslu-schwelle-v1.'.length));
+  if (expected !== q[6]) return { ok: false, reason: 'Prüfsumme stimmt nicht (Tippfehler?)' };
+  var thr = parseInt(q[3], 10), n = parseInt(q[4], 10), k = parseInt(q[5], 10), st = CODE_STATUS[q[2]];
+  if (n < 1 || k > n) return { ok: false, reason: 'Werte unplausibel' };
+  if (st === 'ok' && thr <= 0) return { ok: false, reason: 'Werte unplausibel' };
+  if (st !== 'ok' && thr !== 0) return { ok: false, reason: 'Werte unplausibel' };
+  return { ok: true, id: q[1], status: st, thresholdMs: st === 'ok' ? thr / 100 : null, n: n, k: k };
+}
+
+/* ===== Formatierung ===== */
+function fmtMs(x) { return (x < 10 ? x.toFixed(2) : x.toFixed(1)); }
+function pct(k, n) { return n > 0 ? Math.round(100 * k / n) + ' %' : '–'; }
+function f1(x) { return x.toFixed(1); }
+function $(id) { return document.getElementById(id); }
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, T.instant ? 0 : ms); }); }
+
+/* ======================================================================
+   Audio
+   ====================================================================== */
+var A = { ctx: null, master: null, cur: null, testSrc: null };
+function volToGain(v) { var x = v / 100; return CONFIG.maxGain * x * x; }
+
+function buildGraph(ctx, gainValue) {
+  var g = ctx.createGain();
+  g.gain.value = gainValue;
+  g.connect(ctx.destination);
+  return g;
+}
+function startBuffer(ctx, node, samples, when) {
+  var buf = ctx.createBuffer(1, samples.length, ctx.sampleRate);   // gleiche Rate wie der Kontext: keine Neuberechnung
+  if (buf.copyToChannel) buf.copyToChannel(samples, 0); else buf.getChannelData(0).set(samples);
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(node);
+  src.start(when || 0);
+  return src;
+}
+function audioSupported() { return !!(window.AudioContext || window.webkitAudioContext); }
+
+function showAudioProblem(kind) {
+  var box = $('audio-problem'), txt = $('audio-problem-text'), btn = $('btn-audio-retry');
+  if (kind === 'unsupported') {
+    txt.textContent = 'Dein Browser unterstützt Web Audio nicht. Öffne die Seite in einem aktuellen Browser (Chrome, Firefox, Safari oder Edge).';
+    btn.hidden = true;
+  } else {
+    txt.textContent = 'Der Ton ist blockiert oder angehalten. Tippe auf «Audio freigeben». Prüfe Stummschalter, Gerätelautstärke und Kopfhörer.';
+    btn.hidden = false;
+  }
+  box.hidden = false;
+}
+function hideAudioProblem() { $('audio-problem').hidden = true; }
+
+// Muss direkt im Klick-Handler aufgerufen werden (Autoplay-Regeln).
+function ensureAudio() {
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) { showAudioProblem('unsupported'); return Promise.resolve(false); }
+  try {
+    if (!A.ctx) {
+      try { A.ctx = new AC({ latencyHint: 'interactive' }); } catch (e1) { A.ctx = new AC(); }
+      A.master = buildGraph(A.ctx, volToGain(parseInt($('vol').value, 10)));
+      try { startBuffer(A.ctx, A.master, new Float32Array(2), 0); } catch (e2) { /* iOS-Entsperren, Fehler egal */ }
+    }
+    return Promise.resolve(A.ctx.resume()).then(function () {
+      if (A.ctx.state !== 'running') { showAudioProblem('blocked'); return false; }
+      hideAudioProblem(); return true;
+    }, function () { showAudioProblem('blocked'); return false; });
+  } catch (e) {
+    showAudioProblem('blocked');
+    return Promise.resolve(false);
+  }
+}
+function setVolume() {
+  var v = parseInt($('vol').value, 10);
+  if (A.ctx && A.master) {
+    try { A.master.gain.setTargetAtTime(volToGain(v), A.ctx.currentTime, 0.02); } catch (e) { A.master.gain.value = volToGain(v); }
+  }
+}
+function sampleRateNow() { return A.ctx ? A.ctx.sampleRate : 44100; }
+
+/* ======================================================================
+   Oberfläche
+   ====================================================================== */
+var VIEWS = ['view-setup', 'view-trial', 'view-practice-done', 'view-result', 'view-group'];
+function show(id, focusId) {
+  VIEWS.forEach(function (v) { $(v).hidden = (v !== id); });
+  var f = $(focusId || '');
+  if (f) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
+  window.scrollTo(0, 0);
+}
+function live(msg) { $('live').textContent = msg; }
+
+var S = { run: 0, awaiting: null, interrupted: false, inTrial: false, mode: null, last: null, id: null };
+T.log = [];
+
+function setBoxes(a, b) {
+  $('ibox1').classList.toggle('on', !!a); $('ibox1').querySelector('small').textContent = a ? 'Hören' : '';
+  $('ibox2').classList.toggle('on', !!b); $('ibox2').querySelector('small').textContent = b ? 'Hören' : '';
+}
+function setAnswersEnabled(on) { $('ans1').disabled = !on; $('ans2').disabled = !on; }
+function setStatus(t) { $('trial-status').textContent = t; }
+function setFeedback(t, cls) { var f = $('trial-fb'); f.textContent = t || ''; f.className = 'fb' + (cls ? ' ' + cls : ''); }
+
+function presentTrial(trial, run) {
+  return new Promise(function (resolve) {
+    S.interrupted = false; S.inTrial = true;
+    if (T.instant) { S.inTrial = false; resolve('ok'); return; }
+    var ctx = A.ctx, timers = [], finished = false, src;
+    function done(result) {
+      if (finished) return; finished = true; S.inTrial = false;
+      timers.forEach(clearTimeout); setBoxes(false, false);
+      if (result === 'ok' && (S.interrupted || ctx.state !== 'running')) result = 'interrupted';
+      resolve(result);
+    }
+    try { src = startBuffer(ctx, A.master, trial.data, 0); } catch (e) { done('blocked'); return; }
+    A.cur = src;
+    var ms = function (n) { return Math.round(n * 1000 / trial.sr); };
+    timers.push(setTimeout(function () { setBoxes(true, false); }, ms(trial.starts[0])));
+    timers.push(setTimeout(function () { setBoxes(false, false); }, ms(trial.starts[0] + trial.burstSamples)));
+    timers.push(setTimeout(function () { setBoxes(false, true); }, ms(trial.starts[1])));
+    timers.push(setTimeout(function () { setBoxes(false, false); }, ms(trial.starts[1] + trial.burstSamples)));
+    src.onended = function () { done('ok'); };
+    // Fallback: Läuft der Ton nicht (Kontext angehalten), gibt es kein "ended".
+    timers.push(setTimeout(function () { if (ctx.state !== 'running' || !finished) { try { src.stop(); } catch (e) { } done(ctx.state !== 'running' ? 'blocked' : 'ok'); } }, ms(trial.total) + 1500));
+  });
+}
+
+function waitAnswer(info) {
+  return new Promise(function (resolve) {
+    S.awaiting = { resolve: resolve, info: info };
+    setAnswersEnabled(true);
+    setStatus('In welchem Intervall war die Lücke? Antworte mit den Knöpfen oder den Tasten 1 und 2.');
+    live('Antwort bitte: Intervall 1 oder 2');
+    if (typeof T.listener === 'function') {
+      setTimeout(function () {
+        var a = T.listener(info);
+        if (a === 1 || a === 2) submit(a);
+      }, 0);
+    }
+  });
+}
+function submit(a) {
+  var w = S.awaiting;
+  if (!w) return;
+  S.awaiting = null;
+  setAnswersEnabled(false);
+  w.resolve(a);
+}
+
+function waitAudioUnblocked(run) {
+  return new Promise(function (resolve) {
+    showAudioProblem('blocked');
+    setStatus('Audio ist angehalten.');
+    var btn = $('btn-audio-retry');
+    function onClick() {
+      ensureAudio().then(function (ok) { if (ok) { btn.removeEventListener('click', onClick); resolve(true); } });
+    }
+    btn.addEventListener('click', onClick);
+    S.unblockCancel = function () { btn.removeEventListener('click', onClick); resolve(false); };
+  });
+}
+
+// Ein Durchgang. Liefert {correct, answer, trial} oder null bei Abbruch.
+async function doTrial(run, o) {
+  for (;;) {
+    if (run !== S.run) return null;
+    var gapInterval = rngMain() < 0.5 ? 1 : 2;
+    var trial = generateTrial(sampleRateNow(), { gapMs: o.level, gapInterval: gapInterval, rng: rngMain });
+    var info = { phase: o.phase, n: o.n, level: o.level, gapMs: o.level, gapInterval: gapInterval,
+                 gapSamples: trial.gapSamples, sr: trial.sr };
+    T.current = info;
+    setFeedback('');
+    setStatus('Hör zu …');
+    setBoxes(false, false);
+    await sleep(CONFIG.itiMs);
+    if (run !== S.run) return null;
+    var pres = await presentTrial(trial, run);
+    if (run !== S.run) return null;
+    if (pres === 'blocked') {
+      var ok = await waitAudioUnblocked(run);
+      if (!ok || run !== S.run) return null;
+      continue;
+    }
+    if (pres === 'interrupted') {
+      setStatus('Der Durchgang wurde unterbrochen und wird wiederholt.');
+      T.log.push({ phase: o.phase, n: o.n, interrupted: true });
+      await sleep(1200);
+      continue;
+    }
+    var ans = await waitAnswer(info);
+    if (ans === null || run !== S.run) return null;
+    var correct = (ans === gapInterval);
+    T.log.push({ phase: o.phase, n: o.n, level: o.level, gapSamples: trial.gapSamples, gapInterval: gapInterval, answer: ans, correct: correct });
+    if (o.feedback) {
+      setFeedback(correct ? 'Richtig.' : 'Falsch. Die Lücke war in Intervall ' + gapInterval + '.', correct ? 'good' : 'bad');
+      await sleep(CONFIG.feedbackMs);
+    } else {
+      setFeedback('Antwort gespeichert.');
+      await sleep(250);
+    }
+    return { correct: correct, answer: ans, gapInterval: gapInterval, trial: info };
+  }
+}
+
+async function runPractice(run) {
+  S.mode = 'practice';
+  var correct = 0, total = CONFIG.practiceMs.length;
+  $('h-trial').textContent = 'Übung';
+  $('trial-progress-wrap').hidden = true;
+  for (var i = 0; i < total; i++) {
+    $('trial-count').textContent = 'Übung ' + (i + 1) + ' von ' + total;
+    var r = await doTrial(run, { phase: 'practice', n: i + 1, level: CONFIG.practiceMs[i], feedback: true });
+    if (!r) return;
+    if (r.correct) correct++;
+  }
+  S.practiceCorrect = correct;
+  $('pd-text').textContent = 'Du hattest ' + correct + ' von ' + total + ' Übungsdurchgängen richtig. Im Test wird die Lücke automatisch kürzer oder länger. Es gibt keine Rückmeldung mehr.';
+  show('view-practice-done', 'h-pd');
+  live('Übung beendet');
+}
+
+async function runTest(run) {
+  S.mode = 'test';
+  var st = new Staircase(CONFIG);
+  $('h-trial').textContent = 'Test';
+  $('trial-progress-wrap').hidden = false;
+  updateProgress(st);
+  while (!st.done) {
+    $('trial-count').textContent = 'Durchgang ' + (st.nTrials + 1);
+    var r = await doTrial(run, { phase: 'test', n: st.nTrials + 1, level: st.level, feedback: false });
+    if (!r) return;
+    var gi = r.gapInterval;
+    var lvl = st.level;
+    st.record(r.correct);
+    var last = st.trials[st.trials.length - 1];
+    last.gapInterval = gi; last.answer = r.answer; last.gapSamples = r.trial.gapSamples;
+    updateProgress(st);
+  }
+  finishTest(st);
+}
+function updateProgress(st) {
+  var p = Math.min(100, Math.round(100 * st.reversals.length / CONFIG.reversalsTarget));
+  $('trial-progress').style.width = p + '%';
+  $('trial-progress-wrap').setAttribute('aria-valuenow', String(p));
+}
+
+async function beginSession(mode, auto) {
+  S.run++;
+  var run = S.run;
+  disarm();
+  show('view-trial', 'h-trial');
+  setBoxes(false, false); setAnswersEnabled(false); setFeedback('');
+  $('btn-go').hidden = false;
+  $('trial-count').textContent = mode === 'practice' ? 'Übung 1 von ' + CONFIG.practiceMs.length : 'Durchgang 1';
+  $('h-trial').textContent = mode === 'practice' ? 'Übung' : 'Test';
+  $('trial-progress-wrap').hidden = (mode === 'practice');
+  setStatus(mode === 'practice' ? 'Drück auf «Start». Die Lücke ist in der Übung deutlich hörbar.' : 'Drück auf «Start». Im Test gibt es keine Rückmeldung.');
+  S.pendingStart = function () { return mode === 'practice' ? runPractice(run) : runTest(run); };
+  live(mode === 'practice' ? 'Übung' : 'Test');
+  if (auto) { $('btn-go').hidden = true; var f = S.pendingStart; S.pendingStart = null; if (f) f(); }
+}
+
+/* ===== Ergebnis ===== */
+function finishTest(st) {
+  var r = {
+    status: st.status, thresholdMs: st.thresholdMs, nTrials: st.nTrials, nCorrect: st.nCorrect,
+    reversals: st.reversals.slice(), used: st.usedReversals.slice(), trials: st.trials.slice(),
+    boundaryCount: st.boundaryCount, startMs: CONFIG.startMs
+  };
+  S.last = r;
+  S.id = newId(rngMain);
+  T.lastResult = r;
+  show('view-result', 'h-result');
+  renderResult(r);
+  live('Ergebnis: ' + (r.status === 'ok' ? 'Schwelle ' + fmtMs(r.thresholdMs) + ' Millisekunden' : 'Schwelle nicht bestimmbar'));
+}
+
+var STATUS_TEXT = {
+  ok: 'Test beendet: Anzahl Umkehrpunkte erreicht.',
+  ceiling: 'Schwelle nicht bestimmbar: Die Lücke wurde auch bei der Maximaldauer (' + CONFIG.maxMs + ' ms) mehrfach nicht erkannt.',
+  floor: 'Schwelle nicht bestimmbar: Die Lücke wurde auch bei der Minimaldauer (' + CONFIG.minMs + ' ms) durchgehend erkannt.',
+  maxtrials: 'Schwelle nicht bestimmbar: Die Höchstzahl von ' + CONFIG.maxTrials + ' Durchgängen wurde erreicht, bevor genug Umkehrpunkte vorlagen.'
+};
+
+function renderResult(r) {
+  var main = $('res-main'), sub = $('res-sub');
+  if (r.status === 'ok') {
+    main.textContent = 'Schwelle: ' + fmtMs(r.thresholdMs) + ' ms';
+    sub.textContent = 'Geometrisches Mittel der letzten ' + r.used.length + ' Umkehrpunkte.';
+  } else {
+    main.textContent = 'Schwelle: nicht bestimmbar';
+    sub.textContent = STATUS_TEXT[r.status];
+  }
+  var stats = $('res-stats'); stats.textContent = '';
+  function stat(l, v) {
+    var d = document.createElement('div'); d.className = 'stat';
+    var a = document.createElement('div'); a.className = 'v'; a.textContent = v;
+    var b = document.createElement('div'); b.className = 'l'; b.textContent = l;
+    d.appendChild(a); d.appendChild(b); stats.appendChild(d);
+  }
+  stat('Durchgänge', String(r.nTrials));
+  stat('Trefferquote', pct(r.nCorrect, r.nTrials) + ' (' + r.nCorrect + ' von ' + r.nTrials + ')');
+  stat('Umkehrpunkte', String(r.reversals.length));
+  stat('Start', fmtMs(r.startMs) + ' ms');
+  var bn = $('res-boundary');
+  if (r.status === 'ok' && r.boundaryCount > 0) {
+    bn.textContent = 'Hinweis: ' + r.boundaryCount + ' der gemittelten Umkehrpunkte lagen an einer Grenze (' + CONFIG.minMs + ' ms oder ' + CONFIG.maxMs + ' ms).';
+    bn.hidden = false;
+  } else { bn.hidden = true; }
+  drawStaircase(r);
+  fillTables(r);
+  $('res-code').textContent = buildCode(r, S.id);
+  $('copy-msg').textContent = '';
+}
+
+function fillTables(r) {
+  function build(tbl, head, rows) {
+    tbl.textContent = '';
+    var thead = document.createElement('thead'), tr = document.createElement('tr');
+    head.forEach(function (h, i) { var th = document.createElement('th'); th.scope = 'col'; th.textContent = h; if (i === 0 || /ms/.test(h)) th.className = 'num'; tr.appendChild(th); });
+    thead.appendChild(tr); tbl.appendChild(thead);
+    var tb = document.createElement('tbody');
+    rows.forEach(function (row) {
+      var r2 = document.createElement('tr');
+      row.forEach(function (c, i) { var td = document.createElement('td'); td.textContent = c; if (i === 0 || /^[0-9.]+$/.test(c)) td.className = 'num'; r2.appendChild(td); });
+      tb.appendChild(r2);
+    });
+    tbl.appendChild(tb);
+  }
+  build($('tbl-rev'), ['Durchgang', 'Lücke (ms)', 'in der Mittelung'], r.reversals.map(function (x) {
+    return [String(x.trial), fmtMs(x.level), r.used.indexOf(x) >= 0 ? 'ja' : 'nein'];
+  }));
+  build($('tbl-hist'), ['Durchgang', 'Lücke (ms)', 'Lücke in', 'Antwort', 'Ergebnis'], r.trials.map(function (t) {
+    return [String(t.n), fmtMs(t.level), String(t.gapInterval), String(t.answer), t.correct ? 'richtig' : 'falsch'];
+  }));
+}
+
+/* ===== Diagramm (selbst gezeichnet, SVG) ===== */
+var NS = 'http://www.w3.org/2000/svg';
+function el(name, attrs, parent) {
+  var e = document.createElementNS(NS, name);
+  for (var k in attrs) { if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]); }
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function drawStaircase(r) {
+  var wrap = $('chart-wrap');
+  wrap.textContent = '';
+  var W = Math.max(280, wrap.clientWidth || 600);
+  var H = W < 480 ? 260 : 320;
+  var m = { l: 50, r: 58, t: 14, b: 46 };
+  var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'chart', role: 'img' }, wrap);
+  var N = r.trials.length;
+  var lv = r.trials.map(function (t) { return t.level; });
+  var lo = Math.min.apply(null, lv), hi = Math.max.apply(null, lv);
+  if (r.status === 'ok') { lo = Math.min(lo, r.thresholdMs); hi = Math.max(hi, r.thresholdMs); }
+  var ymin = Math.log(lo / 1.35), ymax = Math.log(hi * 1.35);
+  function X(n) { return m.l + (N <= 1 ? 0.5 : (n - 1) / (N - 1)) * (W - m.l - m.r); }
+  function Y(v) { return m.t + (1 - (Math.log(v) - ymin) / (ymax - ymin)) * (H - m.t - m.b); }
+  el('title', {}, svg).textContent = 'Verlauf der Lückendauer über ' + N + ' Durchgänge';
+  el('desc', {}, svg).textContent = 'Start bei ' + fmtMs(r.startMs) + ' ms. ' + (r.status === 'ok' ? 'Schwelle ' + fmtMs(r.thresholdMs) + ' ms.' : 'Schwelle nicht bestimmbar.') + ' ' + r.reversals.length + ' Umkehrpunkte.';
+  // y-Gitter und Achse (logarithmisch)
+  var ticks = [0.25, 0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100].filter(function (v) { return Math.log(v) >= ymin && Math.log(v) <= ymax; });
+  if (ticks.length < 2) ticks = [lo, hi];
+  ticks.forEach(function (v) {
+    el('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), 'class': 'grid' }, svg);
+    el('text', { x: m.l - 6, y: Y(v) + 4, 'text-anchor': 'end' }, svg).textContent = String(+v.toFixed(2));
+  });
+  el('line', { x1: m.l, x2: m.l, y1: m.t, y2: H - m.b, 'class': 'axis' }, svg);
+  el('line', { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, 'class': 'axis' }, svg);
+  // x-Ticks
+  var stepX = N <= 12 ? 1 : (N <= 30 ? 5 : 10);
+  for (var n = 1; n <= N; n++) {
+    if (n === 1 || n % stepX === 0) {
+      el('line', { x1: X(n), x2: X(n), y1: H - m.b, y2: H - m.b + 4, 'class': 'axis' }, svg);
+      el('text', { x: X(n), y: H - m.b + 17, 'text-anchor': 'middle' }, svg).textContent = String(n);
+    }
+  }
+  el('text', { x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = 'Durchgang';
+  var yl = el('text', { x: 12, y: (m.t + H - m.b) / 2, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + ((m.t + H - m.b) / 2) + ')' }, svg);
+  yl.textContent = 'Lücke (ms, logarithmisch)';
+  // Schwelle
+  if (r.status === 'ok') {
+    el('line', { x1: m.l, x2: W - m.r, y1: Y(r.thresholdMs), y2: Y(r.thresholdMs), 'class': 'thr' }, svg);
+    var tl = el('text', { x: W - m.r + 5, y: Y(r.thresholdMs) + 4, 'text-anchor': 'start', 'class': 'thrlabel' }, svg);
+    tl.textContent = fmtMs(r.thresholdMs) + ' ms';
+  }
+  // Linie
+  var d = r.trials.map(function (t, i) { return (i ? 'L' : 'M') + X(t.n).toFixed(1) + ' ' + Y(t.level).toFixed(1); }).join(' ');
+  el('path', { d: d, 'class': 'line' }, svg);
+  // Punkte
+  r.trials.forEach(function (t) {
+    var x = X(t.n), y = Y(t.level);
+    if (t.correct) el('circle', { cx: x, cy: y, r: 4, 'class': 'ok' }, svg);
+    else el('path', { d: 'M' + (x - 4) + ' ' + (y - 4) + 'L' + (x + 4) + ' ' + (y + 4) + 'M' + (x + 4) + ' ' + (y - 4) + 'L' + (x - 4) + ' ' + (y + 4), 'class': 'no' }, svg);
+  });
+  r.reversals.forEach(function (rv) {
+    el('circle', { cx: X(rv.trial), cy: Y(rv.level), r: 8, 'class': 'rev' }, svg);
+  });
+}
+
+/* ===== Kopieren ===== */
+function copyText(text, msgEl) {
+  function fallback() {
+    var ok = false;
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); document.body.removeChild(ta);
+    } catch (e) { ok = false; }
+    msgEl.textContent = ok ? 'Kopiert.' : 'Kopieren nicht möglich. Markiere den Code und kopiere ihn von Hand.';
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { msgEl.textContent = 'Kopiert.'; }, fallback);
+    } else { fallback(); }
+  } catch (e) { fallback(); }
+}
+
+/* ======================================================================
+   Gruppe auswerten
+   ====================================================================== */
+function parseLines(text) {
+  var lines = String(text).split(/\r\n|\r|\n/), seen = {}, valid = [], invalid = [], dup = 0, lineNo = 0, i, j;
+  for (i = 0; i < lines.length; i++) {
+    lineNo = i + 1;
+    var toks = lines[i].split(/[\s,;]+/).filter(function (x) { return x.length > 0; });
+    if (toks.length > 1 && !toks.every(function (t) { return /^hslu-/i.test(t); })) toks = [lines[i].trim()];   // Fliesstext: eine Meldung je Zeile
+    for (j = 0; j < toks.length; j++) {
+      var key = toks[j].toLowerCase();
+      if (seen[key]) { dup++; continue; }
+      seen[key] = true;
+      var p = parseCode(toks[j]);
+      if (p.ok) valid.push(p); else invalid.push({ line: lineNo, text: toks[j], reason: p.reason });
+    }
+  }
+  return { valid: valid, invalid: invalid, duplicates: dup };
+}
+function groupStats(vals) {
+  var n = vals.length;
+  if (!n) return null;
+  var sum = 0; vals.forEach(function (v) { sum += v; });
+  var mean = sum / n;
+  var sorted = vals.slice().sort(function (a, b) { return a - b; });
+  var med = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  var sd = null;
+  if (n > 1) { var ss = 0; vals.forEach(function (v) { ss += (v - mean) * (v - mean); }); sd = Math.sqrt(ss / (n - 1)); }
+  return { n: n, mean: mean, median: med, sd: sd, min: sorted[0], max: sorted[n - 1] };
+}
+function renderGroup() {
+  var out = $('group-out');
+  out.textContent = '';
+  var res = parseLines($('group-in').value);
+  var p = document.createElement('p');
+  p.textContent = res.valid.length + ' gültige Codes' + (res.duplicates ? ', ' + res.duplicates + ' doppelte ignoriert' : '') + (res.invalid.length ? ', ' + res.invalid.length + ' ungültig' : '') + '.';
+  out.appendChild(p);
+  if (res.invalid.length) {
+    var ul = document.createElement('ul'); ul.className = 'plain';
+    res.invalid.forEach(function (x) {
+      var li = document.createElement('li');
+      var t = x.text.length > 40 ? x.text.slice(0, 40) + '…' : x.text;
+      li.textContent = 'Zeile ' + x.line + ': «' + t + '» – ' + x.reason;
+      ul.appendChild(li);
+    });
+    out.appendChild(ul);
+  }
+  if (!res.valid.length) { T.lastGroup = { valid: [], invalid: res.invalid, duplicates: res.duplicates }; return; }
+  var thr = res.valid.filter(function (v) { return v.status === 'ok'; }).map(function (v) { return v.thresholdMs; });
+  var st = groupStats(thr);
+  // Tabelle
+  var wrap = document.createElement('div'); wrap.className = 'scroll';
+  var tbl = document.createElement('table'); tbl.className = 'tbl';
+  var head = ['Person', 'Schwelle (ms)', 'Durchgänge', 'Trefferquote'];
+  var thead = document.createElement('thead'), htr = document.createElement('tr');
+  head.forEach(function (h, i) { var th = document.createElement('th'); th.scope = 'col'; th.textContent = h; if (i > 0) th.className = 'num'; htr.appendChild(th); });
+  thead.appendChild(htr); tbl.appendChild(thead);
+  var tb = document.createElement('tbody');
+  res.valid.forEach(function (v, i) {
+    var tr = document.createElement('tr');
+    var cells = ['P' + (i + 1), v.status === 'ok' ? fmtMs(v.thresholdMs) : 'nicht bestimmbar', String(v.n), pct(v.k, v.n)];
+    cells.forEach(function (c, j) { var td = document.createElement('td'); td.textContent = c; if (j > 0) td.className = 'num'; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb); wrap.appendChild(tbl); out.appendChild(wrap);
+  // Gruppenmittel
+  var h3 = document.createElement('h3'); h3.textContent = 'Gruppe'; out.appendChild(h3);
+  if (st) {
+    var g = document.createElement('div'); g.className = 'stats';
+    [['Personen mit Schwelle', String(st.n) + ' von ' + res.valid.length],
+     ['Mittelwert', fmtMs(st.mean) + ' ms'],
+     ['Median', fmtMs(st.median) + ' ms'],
+     ['Streuung (SD)', st.sd === null ? '–' : fmtMs(st.sd) + ' ms'],
+     ['Kleinste bis grösste', fmtMs(st.min) + ' bis ' + fmtMs(st.max) + ' ms']].forEach(function (a) {
+      var d = document.createElement('div'); d.className = 'stat';
+      var v = document.createElement('div'); v.className = 'v'; v.textContent = a[1];
+      var l = document.createElement('div'); l.className = 'l'; l.textContent = a[0];
+      d.appendChild(v); d.appendChild(l); g.appendChild(d);
+    });
+    out.appendChild(g);
+    var box = document.createElement('div'); box.className = 'chartbox'; box.id = 'group-chart'; out.appendChild(box);
+    drawGroupDots(box, thr, st);
+  } else {
+    var np = document.createElement('p'); np.textContent = 'Keine bestimmbare Schwelle in dieser Gruppe.'; out.appendChild(np);
+  }
+  T.lastGroup = { valid: res.valid, invalid: res.invalid, duplicates: res.duplicates, stats: st };
+}
+function drawGroupDots(wrap, vals, st) {
+  var W = Math.max(280, wrap.clientWidth || 600), H = 150;
+  var m = { l: 14, r: 14, t: 14, b: 40 };
+  var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'chart', role: 'img' }, wrap);
+  el('title', {}, svg).textContent = 'Schwellen der Gruppe in Millisekunden';
+  el('desc', {}, svg).textContent = vals.length + ' Werte, Mittelwert ' + fmtMs(st.mean) + ' ms.';
+  var hi = Math.max.apply(null, vals); hi = Math.max(hi, st.mean);
+  var tickStep = niceStep(hi / 5);
+  var xmax = Math.ceil(hi / tickStep) * tickStep;
+  if (xmax <= 0) xmax = 1;
+  function X(v) { return m.l + (v / xmax) * (W - m.l - m.r); }
+  el('line', { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, 'class': 'axis' }, svg);
+  for (var t = 0; t <= xmax + 1e-9; t += tickStep) {
+    el('line', { x1: X(t), x2: X(t), y1: H - m.b, y2: H - m.b + 4, 'class': 'axis' }, svg);
+    el('text', { x: X(t), y: H - m.b + 17, 'text-anchor': 'middle' }, svg).textContent = String(+t.toFixed(2));
+  }
+  el('text', { x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle' }, svg).textContent = 'Schwelle (ms)';
+  el('line', { x1: X(st.mean), x2: X(st.mean), y1: m.t, y2: H - m.b, 'class': 'thr' }, svg);
+  var sorted = vals.slice().sort(function (a, b) { return a - b; });
+  var rows = 4;
+  sorted.forEach(function (v, i) {
+    el('circle', { cx: X(v), cy: H - m.b - 14 - (i % rows) * 20, r: 6, 'class': 'ok' }, svg);
+  });
+}
+function niceStep(x) {
+  if (!(x > 0)) return 1;
+  var p = Math.pow(10, Math.floor(Math.log(x) / Math.LN10)), f = x / p;
+  var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  return n * p;
+}
+
+/* ======================================================================
+   Ereignisse
+   ====================================================================== */
+function toGroup() { show('view-group', 'h-group'); }
+function toSetup() { show('view-setup', 'h-setup'); }
+function cancelRun() {
+  S.run++;
+  if (S.awaiting) { var w = S.awaiting; S.awaiting = null; w.resolve(null); }
+  if (S.unblockCancel) { S.unblockCancel(); S.unblockCancel = null; }
+  try { if (A.cur) A.cur.stop(); } catch (e) { }
+  if (A.testSrc) { try { A.testSrc.stop(); } catch (e) { } }
+  setBoxes(false, false); setAnswersEnabled(false);
+}
+
+$('vol').addEventListener('input', setVolume);
+$('btn-testtone').addEventListener('click', function () {
+  ensureAudio().then(function (ok) {
+    if (!ok) return;
+    if (A.testSrc) { try { A.testSrc.stop(); } catch (e) { } }
+    var b = generateBurst(A.ctx.sampleRate, { durMs: 1000, gapMs: 0, rng: mulberry32((Math.random() * 4294967296) >>> 0), edgeMs: 30 });
+    A.testSrc = startBuffer(A.ctx, A.master, b.data, 0);
+  });
+});
+$('btn-to-practice').addEventListener('click', function () {
+  ensureAudio().then(function (ok) { if (ok || T.instant) beginSession('practice'); });
+});
+$('btn-go').addEventListener('click', function () {
+  $('btn-go').hidden = true;
+  var f = S.pendingStart; S.pendingStart = null;
+  if (f) f();
+});
+var armed = null, armTimer = null;
+function disarm() { clearTimeout(armTimer); armed = null; $('btn-cancel').textContent = 'Abbrechen'; }
+$('btn-cancel').addEventListener('click', function () {
+  if (!armed) {
+    armed = true; $('btn-cancel').textContent = 'Wirklich abbrechen?';
+    armTimer = setTimeout(disarm, 4000);
+    return;
+  }
+  disarm(); cancelRun(); toSetup();
+});
+$('btn-start-test').addEventListener('click', function () {
+  ensureAudio().then(function (ok) {
+    if (ok || T.instant) { beginSession('test', true); }
+  });
+});
+$('btn-practice-again').addEventListener('click', function () { beginSession('practice'); });
+$('btn-again').addEventListener('click', function () { cancelRun(); toSetup(); });
+$('btn-copy').addEventListener('click', function () { copyText($('res-code').textContent, $('copy-msg')); });
+$('ans1').addEventListener('click', function () { submit(1); });
+$('ans2').addEventListener('click', function () { submit(2); });
+$('btn-group-run').addEventListener('click', renderGroup);
+$('btn-group-back').addEventListener('click', function () { if (S.last) show('view-result', 'h-result'); else toSetup(); if (location.hash === '#gruppe') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } } });
+['link-group', 'link-group2'].forEach(function (id) {
+  $(id).addEventListener('click', function (e) { e.preventDefault(); toGroup(); });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!S.awaiting) return;
+  if (e.key === '1') { e.preventDefault(); submit(1); }
+  else if (e.key === '2') { e.preventDefault(); submit(2); }
+});
+document.addEventListener('visibilitychange', function () { if (document.hidden && S.inTrial) S.interrupted = true; });
+var rsTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(rsTimer);
+  rsTimer = setTimeout(function () {
+    if (!$('view-result').hidden && S.last) drawStaircase(S.last);
+    var gc = $('group-chart');
+    if (gc && !$('view-group').hidden && T.lastGroup && T.lastGroup.stats) {
+      gc.textContent = '';
+      drawGroupDots(gc, T.lastGroup.valid.filter(function (v) { return v.status === 'ok'; }).map(function (v) { return v.thresholdMs; }), T.lastGroup.stats);
+    }
+  }, 120);
+});
+
+/* ===== Start ===== */
+$('vol').value = String(CONFIG.defaultVolume);
+if (!audioSupported()) {
+  showAudioProblem('unsupported');
+  $('btn-testtone').disabled = true;
+  $('btn-to-practice').disabled = true;
+}
+if (location.hash === '#gruppe') { toGroup(); }
+
+/* ===== Testhaken ===== */
+T.CONFIG = CONFIG;
+T.SEED = SEED;
+T.mulberry32 = mulberry32;
+T.generateBurst = generateBurst;
+T.generateTrial = generateTrial;
+T.buildEnvelope = buildEnvelope;
+T.Staircase = Staircase;
+T.buildCode = buildCode;
+T.parseCode = parseCode;
+T.parseLines = parseLines;
+T.groupStats = groupStats;
+T.checksum = checksum;
+T.state = S;
+T.submit = submit;
+T.audio = A;
+T.volToGain = volToGain;
+// Rendert eine Trial-Folge über denselben Wiedergabeweg in einem OfflineAudioContext.
+T.renderOffline = function (sr, trial, gain) {
+  var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  var ctx = new OAC(1, trial.data.length, sr);
+  var g = buildGraph(ctx, gain);
+  startBuffer(ctx, g, trial.data, 0);
+  return ctx.startRendering().then(function (buf) { return Array.prototype.slice.call(buf.getChannelData(0)); });
+};
+// Läuft das Treppenverfahren ohne Oberfläche mit einem Hörer (Funktion level -> Wahrscheinlichkeit richtig).
+T.simulate = function (pcFn, seed, cfgOverride) {
+  var cfg = {}, k;
+  for (k in CONFIG) { if (Object.prototype.hasOwnProperty.call(CONFIG, k)) cfg[k] = CONFIG[k]; }
+  if (cfgOverride) { for (k in cfgOverride) { if (Object.prototype.hasOwnProperty.call(cfgOverride, k)) cfg[k] = cfgOverride[k]; } }
+  var rng = mulberry32(seed >>> 0), st = new Staircase(cfg);
+  while (!st.done) st.record(rng() < pcFn(st.level));
+  return { status: st.status, thresholdMs: st.thresholdMs, nTrials: st.nTrials, nCorrect: st.nCorrect,
+           reversals: st.reversals, trials: st.trials.map(function (t) { return [t.level, t.correct ? 1 : 0]; }), boundaryCount: st.boundaryCount };
+};
+T.ready = true;
+})();
+</script>
+</body>
+</html>

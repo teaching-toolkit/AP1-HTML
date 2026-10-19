@@ -1,0 +1,29 @@
+== Teil A: 456 Zufallszustaende (38 Zeilen x 12), Seite = Rechenkern im Browser
+  LibreOffice-Neuberechnung (3 Varianten x 12 Durchgaenge): 108 s
+  Zeilen abgedeckt: 38 von 38, Zustaende: 456
+  Seite (http)  gegen Excel (LibreOffice, repariert)   7296 Werte  max. Abweichung 8.88e-16  Abweichungen > 1e-09: 0
+  Seite (file)  gegen Excel (LibreOffice, repariert)   7296 Werte  max. Abweichung 8.88e-16  Abweichungen > 1e-09: 0
+  Seite (http)  gegen Excel (LibreOffice, original)*   7224 Werte  max. Abweichung 8.88e-16  Abweichungen > 1e-09: 0
+  Seite (http)  gegen Excel (sequenzielle Summe)     7296 Werte  max. Abweichung 8.88e-16  Abweichungen > 1e-09: 0
+  Seite (http)  gegen Dezimal-Nachrechnung           7296 Werte  max. Abweichung 1.00e-01  Abweichungen > 1e-09: 1
+  * original = Quell-Excel unveraendert; in Zeile 3 und 40 ohne Y, AI, T (dort fehlt die Formel Y)
+  Quell-Excel Zeile 3/40: Y leer in 24 von 24 Zustaenden, AI dort immer = AW - 4 (24 von 24); die Seite rechnet dort mit M+AN wie in den anderen 36 Zeilen
+  Dezimal-Abweichungen (exakte Haelften, Gleitkomma-Rauschen entscheidet):
+     Zeile 18 resultat: Seite 0.9, Dezimal 1.0, Zustand {'zeit': 9, 'energie': 6.5, 'soz': -9.5, 'erfuellung': -9.5, 'lebensstil': 0, 'finanzen': 7, 'stimmung': -6, 'wurf': 12}
+
+== Teil B: 912 Haelftenfaelle (2*Summe+Wuerfel endet exakt auf x.x5)
+  LibreOffice-Neuberechnung: 101 s
+  Seite gegen Excel (LibreOffice, SUM wie im Excel)  14592 Werte  max. Abweichung 1.00e-01  Abweichungen > 1e-09: 2
+  Seite gegen Excel (sequenzielle Summe)            14592 Werte  max. Abweichung 8.88e-16  Abweichungen > 1e-09: 0
+  Seite gegen Dezimal-Nachrechnung                  14592 Werte  max. Abweichung 1.00e-01  Abweichungen > 1e-09: 4
+  Abweichungen gegen LibreOffice-SUM (nur Resultate nahe 0 bis 1, Rauschen kippt die Haelfte):
+     Zeile 41 resultat: Seite 0.1, LibreOffice 0
+     Zeile 8 resultat: Seite 0.5, LibreOffice 0.6
+  Konsole/Anfragen http: keine Fehler | file: keine Fehler
+
+== Teil C: 228 Zustaende ueber die Bedienoberflaeche (Desktop), Zahlen aus dem DOM gelesen
+  228 Zustaende, 3876 gelesene Zahlen, max. Abweichung (Resultat, Stimmung, Werte danach) 0.00e+00, Abweichungen: 0
+  Davon mit vertauschten Buchstaben A/B (Anzeige gegen Regeloption umgerechnet): 120 von 228 Zustaenden
+  Konsole/Anfragen: keine Fehler
+
+Gesamt: BESTANDEN  (260 s)

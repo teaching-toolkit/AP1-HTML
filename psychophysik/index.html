@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schwellentest und Signalentdeckung</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+.tile { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.tile h2 { margin: 0; }
+.tile p { margin: 0; }
+.tile .meta { color: var(--muted); font-size: .92rem; }
+.tile .actions { margin-top: auto; padding-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tile a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.tile a.link { color: var(--accent); min-height: 44px; display: inline-flex; align-items: center; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Schwellentest und Signalentdeckung</h1>
+  <p class="muted">Zwei kurze Selbstexperimente. Alles läuft in deinem Browser. Es werden keine Daten gesendet oder gespeichert.</p>
+
+  <div class="grid" style="margin-top:16px">
+    <section class="card tile" aria-labelledby="t1">
+      <h2 id="t1">Schwellentest: Lückenerkennung</h2>
+      <p>Du hörst zwei kurze Rauschbursts nacheinander. In einem steckt eine stille Lücke. Du gibst an, in welchem.</p>
+      <p class="meta">Dauer: etwa 6 Minuten · mit Ton · Kopfhörer nötig</p>
+      <div class="actions">
+        <a class="btn primary" href="schwelle.html">Starten</a>
+        <a class="link" href="schwelle.html#gruppe">Gruppe auswerten</a>
+      </div>
+    </section>
+    <section class="card tile" aria-labelledby="t2">
+      <h2 id="t2">Signalentdeckung: Ja/Nein-Aufgabe</h2>
+      <p>Du siehst kurz ein Rauschbild. Manchmal steckt ein schwacher heller Fleck darin. Du antwortest «Ja» oder «Nein». Zwei Blöcke mit Punkten.</p>
+      <p class="meta">Dauer: etwa 6 Minuten · ohne Ton</p>
+      <div class="actions">
+        <a class="btn primary" href="signalentdeckung.html">Starten</a>
+        <a class="link" href="signalentdeckung.html#gruppe">Gruppe auswerten</a>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>
