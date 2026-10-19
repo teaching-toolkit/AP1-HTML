@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blinder-Fleck-Test</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --ink:#1d2430; --muted:#5b6575; --line:#d5d9e0; --accent:#1f5fbf;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14171c; --panel:#1d2128; --ink:#e8ebf0; --muted:#9aa4b2; --line:#343b46; --accent:#6ea2f0; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink);
+       font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  h1{font-size:17px;margin:0 0 2px}
+  header p{margin:0;color:var(--muted);font-size:13.5px}
+  .controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;padding:10px 16px;
+            background:var(--panel);border-bottom:1px solid var(--line)}
+  .controls.hidden{display:none}
+  label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);min-width:130px}
+  label span b{color:var(--ink);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  select,button,input[type=color]{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);
+       border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+  input[type=color]{padding:1px 3px;height:30px;width:52px}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .check{flex-direction:row;align-items:center;gap:6px;min-width:0;color:var(--ink)}
+  main{flex:1;min-height:0;position:relative}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .hint{position:absolute;left:12px;bottom:10px;background:rgba(255,255,255,.88);color:#222;
+        padding:4px 9px;border-radius:6px;font-size:12.5px;pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Blinder-Fleck-Test</h1>
+  <p>Linkes Auge schliessen, mit dem rechten Auge das Kreuz fixieren. Der Punkt wandert auf das Kreuz zu und verschwindet bei einem individuellen Abstand. Dabei etwa 40–60 cm Abstand zum Bildschirm halten.</p>
+</header>
+
+<section class="controls" id="controls">
+  <label>
+    <span>Grösse: <b id="vScale"></b></span>
+    <input type="range" id="scale" min="0.5" max="6" step="0.1" value="2">
+  </label>
+  <label>
+    <span>Geschwindigkeit: <b id="vSpeed"></b></span>
+    <input type="range" id="speed" min="0.2" max="10" step="0.1" value="2">
+  </label>
+  <label>
+    <span>Hintergrund</span>
+    <select id="pat">
+      <option value="white">Weiss</option>
+      <option value="grey">Grau</option>
+      <option value="black">Schwarz</option>
+      <option value="hstripes">Horizontale Streifen</option>
+      <option value="vstripes">Vertikale Streifen</option>
+      <option value="checker">Schachbrett</option>
+      <option value="dots">Punkte</option>
+      <option value="grid">Gitter</option>
+      <option value="noise">Rauschen</option>
+      <option value="gradient">Verlauf</option>
+    </select>
+  </label>
+  <label>
+    <span>Mustergrösse: <b id="vPsize"></b></span>
+    <input type="range" id="psize" min="6" max="80" step="1" value="24">
+  </label>
+  <label>Kreuz <input type="color" id="cCross" value="#000000"></label>
+  <label>Punkt <input type="color" id="cDot" value="#e00000"></label>
+  <label class="check"><input type="checkbox" id="mirror"> Linkes Auge testen (gespiegelt)</label>
+  <button class="primary" id="play">Pause</button>
+  <button id="reset">Neustart</button>
+  <button id="full">Vollbild</button>
+</section>
+
+<main id="stage">
+  <canvas id="cv"></canvas>
+  <div class="hint">Leertaste: Pause/Start · ← →: Punkt von Hand bewegen · H: Menü ein/aus · F: Vollbild</div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  const stage = $('stage');
+  const S = { playing:true, d:0, dir:-1 };
+  let W = 0, H = 0, dpr = 1, bg = null;
+
+  const val = {
+    scale: () => parseFloat($('scale').value),
+    speed: () => parseFloat($('speed').value),
+    psize: () => parseFloat($('psize').value)
+  };
+  const unit = () => 20 * val.scale();                    // Basiseinheit in px
+  const dMax = () => Math.max(3*unit(), Math.min(14*unit(), W - 8*unit()));
+  const dMin = () => 1.5 * unit();
+
+  function labels(){
+    $('vScale').textContent = Math.round(val.scale()*100) + ' %';
+    $('vSpeed').textContent = val.speed().toFixed(1) + ' ×';
+    $('vPsize').textContent = val.psize() + ' px';
+  }
+
+  function resize(){
+    dpr = window.devicePixelRatio || 1;
+    W = stage.clientWidth; H = stage.clientHeight;
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    buildBg();
+    S.d = Math.min(Math.max(S.d, dMin()), dMax());
+  }
+
+  function buildBg(){
+    bg = document.createElement('canvas');
+    bg.width = cv.width; bg.height = cv.height;
+    const g = bg.getContext('2d');
+    g.scale(dpr, dpr);
+    const p = val.psize(), type = $('pat').value;
+    const fill = (c) => { g.fillStyle = c; g.fillRect(0,0,W,H); };
+    const L = '#ffffff', D = '#9a9a9a';
+    switch(type){
+      case 'white': fill('#ffffff'); break;
+      case 'grey':  fill('#8c8c8c'); break;
+      case 'black': fill('#000000'); break;
+      case 'hstripes':
+        fill(L); g.fillStyle = D;
+        for(let y=0;y<H;y+=2*p) g.fillRect(0,y,W,p); break;
+      case 'vstripes':
+        fill(L); g.fillStyle = D;
+        for(let x=0;x<W;x+=2*p) g.fillRect(x,0,p,H); break;
+      case 'checker':
+        fill(L); g.fillStyle = D;
+        for(let y=0,r=0;y<H;y+=p,r++)
+          for(let x=0,c=0;x<W;x+=p,c++)
+            if((r+c)%2===0) g.fillRect(x,y,p,p);
+        break;
+      case 'dots':
+        fill(L); g.fillStyle = D;
+        for(let y=p/2;y<H+p;y+=p)
+          for(let x=p/2;x<W+p;x+=p){ g.beginPath(); g.arc(x,y,p*0.28,0,6.2832); g.fill(); }
+        break;
+      case 'grid':
+        fill(L); g.strokeStyle = D; g.lineWidth = Math.max(1, p/12);
+        g.beginPath();
+        for(let x=0;x<=W;x+=p){ g.moveTo(x+.5,0); g.lineTo(x+.5,H); }
+        for(let y=0;y<=H;y+=p){ g.moveTo(0,y+.5); g.lineTo(W,y+.5); }
+        g.stroke(); break;
+      case 'noise': {
+        const c = Math.max(2, Math.round(p/4));
+        for(let y=0;y<H;y+=c)
+          for(let x=0;x<W;x+=c){ const v = 90 + Math.random()*140|0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x,y,c,c); }
+        break; }
+      case 'gradient': {
+        const gr = g.createLinearGradient(0,0,W,0);
+        gr.addColorStop(0,'#ffffff'); gr.addColorStop(1,'#303030');
+        g.fillStyle = gr; g.fillRect(0,0,W,H); break; }
+    }
+  }
+
+  function draw(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(bg,0,0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const u = unit(), mir = $('mirror').checked, sgn = mir ? -1 : 1, max = dMax();
+    const cx = mir ? (W + max)/2 : (W - max)/2, cy = H/2;
+
+    // Kreuz
+    ctx.strokeStyle = $('cCross').value;
+    ctx.lineWidth = Math.max(2, u*0.18);
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(cx-u, cy); ctx.lineTo(cx+u, cy);
+    ctx.moveTo(cx, cy-u); ctx.lineTo(cx, cy+u);
+    ctx.stroke();
+
+    // Punkt
+    ctx.fillStyle = $('cDot').value;
+    ctx.beginPath();
+    ctx.arc(cx + sgn*S.d, cy, u*0.6, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  let last = performance.now();
+  function frame(t){
+    const dt = Math.min(0.1, (t-last)/1000); last = t;
+    if(S.playing){
+      S.d += S.dir * val.speed() * unit() * dt;
+      if(S.d >= dMax()){ S.d = dMax(); S.dir = -1; }
+      if(S.d <= dMin()){ S.d = dMin(); S.dir = 1; }
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function setPlaying(p){ S.playing = p; $('play').textContent = p ? 'Pause' : 'Start'; }
+  function restart(){ S.d = dMax(); S.dir = -1; setPlaying(true); }
+  function nudge(dir){ setPlaying(false); S.d = Math.min(dMax(), Math.max(dMin(), S.d + dir*unit()*0.15)); }
+  function fullscreen(){
+    if(document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.();
+  }
+
+  ['scale','speed'].forEach(id => $(id).addEventListener('input', () => {
+    labels();
+    if(id==='scale'){ S.d = Math.min(Math.max(S.d, dMin()), dMax()); }
+  }));
+  $('psize').addEventListener('input', () => { labels(); buildBg(); });
+  $('pat').addEventListener('change', buildBg);
+  $('mirror').addEventListener('change', () => {});
+  $('play').addEventListener('click', () => setPlaying(!S.playing));
+  $('reset').addEventListener('click', restart);
+  $('full').addEventListener('click', fullscreen);
+
+  window.addEventListener('keydown', e => {
+    if(['INPUT','SELECT','BUTTON'].includes(document.activeElement.tagName) && e.key===' ') return;
+    if(e.key === ' '){ e.preventDefault(); setPlaying(!S.playing); }
+    else if(e.key === 'ArrowLeft'){ e.preventDefault(); nudge(-1); }
+    else if(e.key === 'ArrowRight'){ e.preventDefault(); nudge(1); }
+    else if(e.key.toLowerCase() === 'h'){ $('controls').classList.toggle('hidden'); resize(); }
+    else if(e.key.toLowerCase() === 'f'){ fullscreen(); }
+  });
+  window.addEventListener('resize', resize);
+  new ResizeObserver(resize).observe(stage);
+
+  labels(); resize(); S.d = dMax();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
